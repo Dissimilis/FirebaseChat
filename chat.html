@@ -1,115 +1,118 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<meta http-equiv="content-type" content="text/html; charset=utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js"></script>
-		<script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
-    		<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/pbkdf2.js"></script>    
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
-		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>	
-		<style>
-		/*@import "https://fonts.googleapis.com/css?family=Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400";*/
-			body { 
-				background: #454044;
-				font-family: Arial,sans-serif;
-				font-weight: normal;
-				font-size: 1.6em;
-				line-height: 1.6;
-				margin-bottom: 0.75em;
-				text-rendering: optimizelegibility;
-			 }
-			.container-fluid {
-				padding-right: 0px;
-				padding-left: 0px;
-				margin-right: auto;
-				margin-left: auto;
-			}
-			#secureIcon	{
-				position:fixed;
-				top: 5px;
-				right: 25px;		
-			}
-			.row {
-				width: 95%;
-				margin: auto;
-				background: #d0cab4;
-				border-radius: 0.3em 0.3em 0 0;
-			}
-			#inputs-container {
-				position: fixed;
-				bottom: 0px;
-				width: 100%;
-				height: 18%;
-				background: #3c2e2d;
-				border-radius: 0.3em 0.3em 0 0;
-				overflow: hidden;
-				-webkit-box-shadow: 0px -14px 15px -10px rgba(243,255,238,0.7);
-				-moz-box-shadow: 0px -14px 15px -10px rgba(243,255,238,0.7);
-				box-shadow: 0px -14px 15px -10px rgba(243,255,238,0.7);
-			}
-			#inputs { padding: 0.4em; }
-			#messages {
-				position: fixed;
-				top: 0px;
-				width: 100%;
-				height: 82%;
-				overflow: auto; 
-			}
-			.msg.row.same {	border-radius: 0; }
-			.msg.row.alternate { background: #f3ffee; }
-			.msg.row.alternate.same { border-radius: 0; }
-			.msg { padding-left: 0.2em;	}
-			.msg.new { margin-top: 0.2em; }
-			.msg.enc { border-right: 2px dotted green; }
-			.msg.new .nickname {
-				width: auto;
-				float: right;
-			}
-			.msg.same .nickname { display:none; }
-			.msg .nickname { display: inline-block; }
-			.msg .msgBody {
-				padding-left: 0.2em;
-				display: inline-block;
-			}
-			.msg .time {
-				color:#657797;
-				font-size: 10px;
-				margin:0;
-			}
-			.col-md-1 { width: auto; }
-			img {
-				padding: 0.1em 0 0 0;
-				max-width: 100%;
-				max-height: 100%;
-			}
-			@-moz-document url-prefix() {
-			img { width: 100%; height: 100%; }
-			}
-			input, button, select, textarea {
-				border-radius: 0.2em;
-				background: #cdc7c7;
-			}
-			button { margin-top: 0.2em; }
-			#inputs input { margin-bottom: 0.4em; }
-			#inputs textarea { min-width: 10em; width: 100%; }
-			#messages .alternate .msgBody { background: #f3ffee; }
-			hr { margin: 3px; }
-		</style>
-		<title>Chat</title></head>
-	</head>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/aes.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/pbkdf2.js"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+	
+		<meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+	/*@import "https://fonts.googleapis.com/css?family=Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400";*/
+		body { 
+			background: #454044;
+		    font-family: Arial,sans-serif;
+		    font-weight: normal;
+		    font-size: 1.6em;
+    		line-height: 1.6;
+    		margin-bottom: 0.75em;
+    		text-rendering: optimizelegibility;
+		 }
+		.container-fluid {
+    		padding-right: 0px;
+    		padding-left: 0px;
+    		margin-right: auto;
+    		margin-left: auto;
+		}
+		#secureIcon	{
+			position:fixed;
+			top: 5px;
+			right: 25px;		
+		}
+		.row {
+			width: 95%;
+			margin: auto;
+			background: #d0cab4;
+			border-radius: 0.3em 0.3em 0 0;
+		}
+		#inputs-container {
+    		position: fixed;
+			bottom: 0px;
+			width: 100%;
+    		height: 18%;
+			background: #3c2e2d;
+			border-radius: 0.3em 0.3em 0 0;
+			overflow: hidden;
+			-webkit-box-shadow: 0px -14px 15px -10px rgba(243,255,238,0.7);
+			-moz-box-shadow: 0px -14px 15px -10px rgba(243,255,238,0.7);
+			box-shadow: 0px -14px 15px -10px rgba(243,255,238,0.7);
+		}
+		#inputs { padding: 0.4em; }
+		#messages {
+			position: fixed;
+			top: 0px;
+			width: 100%;
+			height: 82%;
+			overflow: auto; 
+		}
+		.msg.row.same {	border-radius: 0; }
+		.msg.row.alternate { background: #f3ffee; }
+		.msg.row.alternate.same { border-radius: 0; }
+		.msg { padding-left: 0.2em;	}
+		.msg.new { margin-top: 0.2em; }
+		.msg.enc { border-right: 2px dotted green; }
+		.msg.new .nickname {
+			width: auto;
+			float: right;
+		}
+		.msg.same .nickname { display:none; }
+		.msg .nickname { display: inline-block; }
+		.msg .msgBody {
+			padding-left: 0.2em;
+			display: inline-block;
+		}
+		.msg .time {
+			color:#657797;
+			font-size: 10px;
+			margin:0;
+		}
+		.col-md-1 { width: auto; }
+		img {
+			padding: 0.1em 0 0 0;
+			max-width: 100%;
+			max-height: 100%;
+		}
+		@-moz-document url-prefix() {
+		img { width: 100%; height: 100%; }
+		}
+		input, button, select, textarea {
+			border-radius: 0.2em;
+			background: #cdc7c7;
+		}
+		button { margin-top: 0.2em; }
+		#inputs input { margin-bottom: 0.4em; }
+		#inputs textarea { min-width: 10em; width: 100%; }
+		#messages .alternate .msgBody { background: #f3ffee; }
+		hr { margin: 3px; }
+	</style>
+	<title>Chat</title></head>
+  </head>
   <body>
-    <div class="container-fluid">	
+    <div class="container-fluid">
+	
     <div id="messages"></div>
 	<div id="inputs-container">
 	<div id="inputs">			
 		<input value="" id="nameInput" placeholder="Name" type="text">
-		<span id="notificationsConfig">
-		<input type="checkbox" id="enableNotificationsInput"> Enable notifications
-		</span>
-		<br>		
+		<input value="" type="password" id="passwordInput" placeholder="Encryption password">		
+		<button id="persistPass">#</button>
+		<input type="checkbox" id="enableEncryption"> Enable encryption
+		<br>
 		<textarea id="messageInput" placeholder="Message" type="text"></textarea>
 		<br>
 		<button id="send">Send</button>
@@ -118,190 +121,240 @@
 	
 	</div>
 	<script>
-	/* ---------------------- CONFIGURATION ------------------------*/
-	var databaseUrl = 'https://xxxyyyzzzz.firebaseio-demo.com';
-	var messagesLimit = 447; //how many messages to show
-	var pbkdf2Iterrations = 447; //password stretching strength. Bigger number puts more load on client;
-	var defaultPassword = 'xyz123'; //change this to something random
-	var notificationsEnabled = true; //enables or disables desktop notifications globally
-	var passwordSalt = 'ba1cba00555d77ab'; //change this to something random
-	/* ------------------ END OF CONFIGURATION ---------------------*/
-	
-	
-	var fb = new Firebase(databaseUrl);
-	fbQuery = fb.endAt().limitToLast(messagesLimit);
-	var lastName = "";
-	var notifyEnabled = false;		
-	passwordSalt = CryptoJS.enc.Hex.parse(passwordSalt);
-	var password = CryptoJS.PBKDF2(getParameterByName("p") || defaultPassword, passwordSalt, { keySize: 256/32, iterations: pbkdf2Iterrations });
-	$("#secureIcon").show(1000);
-	if (!notificationsEnabled)
-	{	
-		$('#notificationsConfig').remove();
-	}
-	else
-	{
-		notificationsEnabled = localStorage.getItem("notificationsEnabled") || false;
-		$('#enableNotificationsInput').val(notificationsEnabled);
-		$('#enableNotificationsInput').change(function(){localStorage.setItem("notificationsEnabled", $(this).val());})		
-	}
-	/******** UNREAD MESSAGE NOTIFICATION *********/
-	var unreadMsgCount = 0;
-	var hidden, visibilityChange; 
-	var title = "Chat";  
-	document.title = title;
-	/**********************************************/
-
-	$(function(){
-	$("#enableEncryption").prop('checked', false);
-	$('#nameInput').val(localStorage.getItem("nickname"));
-	
-	fbAttach();
-	/******** UNREAD MESSAGE NOTIFICATION *********/
-	setupVisibilityProps();
-	/**********************************************/
-	});
-	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());})		
-	$('#send').click(function(){send();})
-
-
-	$('#messageInput').keypress(function (e) {
-	if (e.keyCode == 13) {
-		if (!e.ctrlKey) {				
-			send();
-			return false;
-		} else {
-			$('#messageInput').val($('#messageInput').val() + "\n");
-		}
-	}
-	});
-
-	function fbAttach()
-	{
-	notifyEnabled = false;
-	setTimeout(function(){notifyEnabled=true;},7000);
-	fbQuery.on('child_added', function (snapshot) {
-		var message = snapshot.val();
-		if (message.ct) //encrypted
-		{
-			try {
-				var decrypted = CryptoJS.AES.decrypt(message.ct, password,{ iv:iv });
-				message.text = decrypted.toString(CryptoJS.enc.Utf8);
-			} catch (err) {}
-			if (!message.text)
-				message.text = "Decryption failed";
-		}
-		displayChatMessage(message.name, message.text, message._at, message.ct);
-		/******** UNREAD MESSAGE NOTIFICATION *********/		
-		notifyAboutUnread(snapshot);
-		/**********************************************/		
-		if (notifyEnabled)
-			notify(message.name, message.text);
-		lastName = message.name;
-	});
-	}
-
-
-	function send()
-	{
-		var name = $('#nameInput').val();			
-		var text = $('#messageInput').val();					
-		if (encrypt)
-		{
-			var encrypted = CryptoJS.AES.encrypt(text, password,{ iv:iv });				
-			fb.push({name: name, text: "This message is encrypted", ct: encrypted.toString(), _at: new Date().toISOString() });
-		}
-		else
-		{
-			fb.push({name : name, text : text, _at: new Date().toISOString()});
-		}
-		$('#messageInput').val('');
-	}
-	function displayChatMessage(name, text, time, encrypted) {
-	var localTimeString = new Date(Date.parse(time)).toLocaleString();
-	var altClass="";
-	var sameNickClass = "new"
-	var encryptedClass = "enc";
-	if (!encrypted)
-		encryptedClass = "";
-	if ($('#nameInput').val() != name)
-		altClass = "alternate";
-	if (lastName == name)
-		sameNickClass = "same";
-	text = formatText(text);
-	var body  = $("<div class='msgBody col-md-11' />").html(text).append($('<p class="time" />').text(localTimeString));
-	var textDiv= $('<div class="msg row '+altClass+' '+sameNickClass+' '+encryptedClass+'" />').html(body);
-	textDiv = textDiv.prepend($('<div class="nickname col-md-1" />').text(name));
-
-		
-	textDiv.appendTo($('#messages'));
-	$('#messages')[0].scrollTop = $('#messages')[0].scrollHeight;
-	};
-
-	function formatText(txt)
-	{
-	  var imgExp= /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/i;
-	  txt = txt.replace("\n", "<br />");
-	  txt = txt.replace(imgExp, '<img src="$1" />'); 
-	  return txt;
-
-	}
-	
-	function notify(name, txt) {
-
-	if (name == $('#nameInput').val())
-		return;
-	if (!("Notification" in window)) {
-		alert("This browser does not support desktop notification");
-	} else if (Notification.permission === "granted") {
-		var notification = new Notification(txt);
-	} else if (Notification.permission !== 'denied') {
-		Notification.requestPermission(function (permission) {
-			if (permission === "granted") {
-				var notification = new Notification(txt);
-			}
-		});
-	}
-	}
+      var fb = new Firebase('https://antano-chatas.firebaseio.com/');
+	  fbQuery = fb.endAt().limitToLast(147);
+      var lastName = "";
+	  var notifyEnabled = false;
+	  var password;
+	  var salt = CryptoJS.enc.Hex.parse('ba1cba00555d77ab');
+	  var iv = CryptoJS.enc.Hex.parse('ca123400777d00cd');
+	  var encrypt = false;
 	  
-	/******** UNREAD MESSAGE NOTIFICATION *********/
-	function setupVisibilityProps(){
-	if (typeof document.hidden !== "undefined") { 
-	  hidden = "hidden";
-	  visibilityChange = "visibilitychange";
-	} else if (typeof document.mozHidden !== "undefined") {
-	  hidden = "mozHidden";
-	  visibilityChange = "mozvisibilitychange";
-	} else if (typeof document.msHidden !== "undefined") {
-	  hidden = "msHidden";
-	  visibilityChange = "msvisibilitychange";
-	} else if (typeof document.webkitHidden !== "undefined") {
-	  hidden = "webkitHidden";
-	  visibilityChange = "webkitvisibilitychange";
-	}
-	document.addEventListener(visibilityChange, onVisibilityChange, false);
-	}
+	  /******** UNREAD MESSAGE NOTIFICATION *********/
+	  var unreadMsgCount = 0;
+	  var hidden, visibilityChange; 
+	  var title = "Chat";  
+	  document.title = title;
+	  /**********************************************/
+	  
 
-	function onVisibilityChange(){
-	if (!document[hidden]) {
-		unreadMsgCount = 0;
-		document.title = title;
-	}
-	}
+	  $(function(){
+	
+		$('#nameInput').val(localStorage.getItem("nickname"));
+		fbAttach();
+		/******** UNREAD MESSAGE NOTIFICATION *********/
+		setupVisibilityProps();
+		/**********************************************/
+	  	if (window.location.hash)
+		{
+			$("#enableEncryption").prop('checked', true);
+			enableEncryption();
+		}
+	  });
+	  $('#nameInput').change(function(){localStorage.setItem("nickname", $('#nameInput').val());})
+	  $('#passwordInput').change(function(){$("#enableEncryption").prop('checked', false);})
+	  $('#send').click(function(){send();})
+	  $('#persistPass').click(function(){
+	  		window.location.hash = password.substring(password.length/2);
+			localStorage.setItem("p", password.substring(0,password.length/2))
+	  })
+	  
+	  $("#enableEncryption").change(function() {
+			if(this.checked) {
+				enableEncryption();
+			} else
+			{
+				encrypt = false;
+				$("#secureIcon").hide(1000);
+			}
+	   });
+	  
+      $('#messageInput').keypress(function (e) {
+      	if (e.keyCode == 13) {
+      		if (!e.ctrlKey) {				
+      			send();
+      			return false;
+      		} else {
+      			$('#messageInput').val($('#messageInput').val() + "\n");
+      		}
+      	}
+      });
+	  function enableEncryption()
+	  {
+				userpass = $('#passwordInput').val();
+				locpass = localStorage.getItem("p");
+				if (window.location.hash && locpass && !userpass)
+				{
+					password = locpass + window.location.hash.substring(1);
+				}
+				else
+				{
+					password = CryptoJS.PBKDF2(userpass, salt, { keySize: 256/32, iterations: 447 }).toString();
+				}
+				$("#secureIcon").show(1700);
+				fb.off();
+				$('#messages').html('');				
+				encrypt = true;
+				fbAttach();
+	  }
+	  function fbAttach()
+	  {
+		notifyEnabled = false;
+		setTimeout(function(){notifyEnabled=true;},7000);
+		fbQuery.on('child_added', function (snapshot) {
+			var message = snapshot.val();
+			if (message.ct && encrypt) //encrypted
+			{
+				var decrypted = CryptoJS.AES.decrypt(message.ct, CryptoJS.enc.Hex.parse(password),{ iv:iv });
+				message.text = decrypted.toString(CryptoJS.enc.Utf8);
+				if (!message.text)
+					message.text = "Decryption failed";
+			}
+			displayChatMessage(message.name, message.text, message._at, message.ct);
+			/******** UNREAD MESSAGE NOTIFICATION *********/		
+			notifyAboutUnread(snapshot);
+			/**********************************************/		
+			if (notifyEnabled)
+				notify(message.name, message.text);
+			lastName = message.name;
+		});
+	  }
+	  
 
-	function notifyAboutUnread(eventArgs) {
-	if (document[hidden]) {
-		unreadMsgCount += 1;
-		document.title = '(' + unreadMsgCount + ') ' + title;
-	}
-	}
+	  function send()
+	  {
+			var name = $('#nameInput').val();			
+      		var text = $('#messageInput').val();					
+			if (encrypt)
+			{
+				var encrypted = CryptoJS.AES.encrypt(text, CryptoJS.enc.Hex.parse(password),{ iv:iv });				
+				fb.push({name: name, text: "This message is encrypted", ct: encrypted.toString(), _at: getUTCTime() });
+			}
+			else
+			{
+				fb.push({name : name, text : text, _at: getUTCTime()});
+			}
+      		$('#messageInput').val('');
+	  }
+      function displayChatMessage(name, text, time, encrypted) {
+		var altClass="";
+		var sameNickClass = "new"
+		var encryptedClass = "enc";
+		if (!encrypted)
+			encryptedClass = "";
+      	if ($('#nameInput').val() != name)
+      		altClass = "alternate";
+		if (lastName == name)
+			sameNickClass = "same";
+		text = formatText(text);
+      	var body  = $("<div class='msgBody col-md-11' />").html(text).append($('<p class="time" />').text(formatDateTime(time)));
+      	var textDiv= $('<div class="msg row '+altClass+' '+sameNickClass+' '+encryptedClass+'" />').html(body);
+		textDiv = textDiv.prepend($('<div class="nickname col-md-1" />').text(name));
+		
+			
+		textDiv.appendTo($('#messages'));
+      	$('#messages')[0].scrollTop = $('#messages')[0].scrollHeight;
+      };
+	  
+	  function formatText(txt)
+	  {
+		  var imgExp= /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/i;
+		  txt = txt.replace("\n", "<br />");
+		  txt = txt.replace(imgExp, '<img src="$1" />'); 
+		  return txt;
+		
+	  }
+	
+      function notify(name, txt) {
 
-	function getParameterByName(name) {
-	  name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-	  var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-	  results = regex.exec(location.search);
-	  return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
-	}
+      	if (name == $('#nameInput').val())
+      		return;
+      	if (!("Notification" in window)) {
+      		alert("This browser does not support desktop notification");
+      	} else if (Notification.permission === "granted") {
+      		var notification = new Notification(txt);
+      	} else if (Notification.permission !== 'denied') {
+      		Notification.requestPermission(function (permission) {
+      			if (permission === "granted") {
+      				var notification = new Notification(txt);
+      			}
+      		});
+      	}
+      }
+	  
+	  /******** UNREAD MESSAGE NOTIFICATION *********/
+	  function setupVisibilityProps(){
+		if (typeof document.hidden !== "undefined") { 
+		  hidden = "hidden";
+		  visibilityChange = "visibilitychange";
+		} else if (typeof document.mozHidden !== "undefined") {
+		  hidden = "mozHidden";
+		  visibilityChange = "mozvisibilitychange";
+		} else if (typeof document.msHidden !== "undefined") {
+		  hidden = "msHidden";
+		  visibilityChange = "msvisibilitychange";
+		} else if (typeof document.webkitHidden !== "undefined") {
+		  hidden = "webkitHidden";
+		  visibilityChange = "webkitvisibilitychange";
+		}
+		document.addEventListener(visibilityChange, onVisibilityChange, false);
+	  }
+	  
+	  function onVisibilityChange(){
+		if (!document[hidden]) {
+			unreadMsgCount = 0;
+			document.title = title;
+		}
+	  }
+	  
+	  function notifyAboutUnread(eventArgs) {
+		if (document[hidden]) {
+			unreadMsgCount += 1;
+			document.title = '(' + unreadMsgCount + ') ' + title;
+		}
+	  }
+	  /**********************************************/
+	  /******** MESSAGE TIME *********/
+	  function getUTCTime() {
+		var now = new Date();
+		return now.getTime() + now.getTimezoneOffset() * 60000;
+	  }
+	  function formatDateTime(utcDate){
+		var time = new Date(utcDate);
+		time.setMinutes(time.getMinutes() - time.getTimezoneOffset())
+		
+		var year    = time.getFullYear();
+		var month   = time.getMonth()+1; 
+		var day     = time.getDate();
+		var hour    = time.getHours();
+		var minute  = time.getMinutes();
+		var second  = time.getSeconds(); 
+		if(month.toString().length == 1) {
+			var month = '0'+month;
+		}
+		if(day.toString().length == 1) {
+			var day = '0'+day;
+		}   
+		if(hour.toString().length == 1) {
+			var hour = '0'+hour;
+		}
+		if(minute.toString().length == 1) {
+			var minute = '0'+minute;
+		}
+		if(second.toString().length == 1) {
+			var second = '0'+second;
+		}   
+
+		var now = new Date();
+		
+		if(time.setHours(0,0,0,0) == now.setHours(0,0,0,0)){
+			return hour+':'+minute+':'+second;   		
+		}
+		
+		return year+'-'+month+'-'+day+' '+hour+':'+minute+':'+second;   		
+	 }
+	  /**********************************************/
+	  
     </script>
 
 <div id="secureIcon" style="display:none;"><img src="data:image/gif;base64,R0lGODlhIAAgAOZ/ANDt//+/ALKEMLiKM+X1/6anqOC9atXv/3WVvJVlPbLL483s/5lxUMfIx//EEpdoMN/z///GGoxbMfLy8oyXqur3/4Wjxu74/5q52eLWzMKniMKMG//MNNnw/7m3tf/ABMSVM8KXQ/e+Ga3J45eXl//UVJirx//IJqZzJfL6/7ORZsCql+z4///efdLIvrqhi//BCKmDY//CDP/cc7ucfUlnlf/AAv/aavT7///XYP/nov/RSI2szsKfYqyKZcKQKeDDgqnH46OBYrjN49mfEPe5BJaqx9GZE7uGH+i6Q7KAIpCtznd/jef2/+j2/+L0/+Hz/9zy/9vx/8GsmOjg2G15jdHBsvDq5djLv7qbcPDfuPj4+MKgasy+saS71erv8qx8LsmSFrOQYK+OcrSnmf/fgP/zz3yCjNm4c+CmDdTU1JFgL//KLJeEe8vU2MKdXK+afJ9vLoKGjKuMX//ghbqQRKfH48mtl9Le5aN6V7aXfff18v/HIPf8///OPf///yH5BAEAAH8ALAAAAAAgACAAAAf/gH+Cg3tYU1NWV4OLjI2Ney9ZQC05SSAqGY6ajVRCWjqUOxwnIkpje5ube0JmoDmiJxEOMkp5qZovn5Qhaz4gIjIwH3FtJsbHx0bKFhQNf3tZriEJmVQDwh9ECRN9ODgpKRfiFRVOTV5Mf1iTr3Eagy8fHwEBElje4OIX5OYEQ+lTQnF4cAfePHoopnwLN65cEwL+AL4a9SOGIGv0EC5JseRCxyUVljRZQuDJvz9WkoyStUEMjR9FMgZYs/FjSCcklzyBcvIKiFizsMkMkEbCR48hRxJYAgWCgnR/fIgIKm9oABQMxLHg97BkU6dQrwwIVnXoEQkuLmx1CHEnBAhR/54OsjKgrMyzNpfgXPpkCYQlUaTIHURFzJGY9IigSNBlCQuQInNC8btESofBi6gwEIBkgwQ9X5Dqzdn3b5QlHTqMgMpIww4Z9aao5dr2a+DUB1Y70lACtoQVa/t5fXu7w4HcrBfxhr1mBbnISyf/lYJ6yXHdjV7kcHA1RjnSlE93sG4dQJDkg6bc4I4ihjnJlKmPP7AEgHn0gqbMcGCjfVe3cFlm3HH23efIFGVEYIMSMdRGnIDHLWHBhBggIIcjWBigoBISkAHHHA0AVh19B1hg3wJ21ECCIxkYwMcHIWxnAxFGyUceACYusAACZ6jBogEnfFDHDREgsYYQI95ogXGOCFThgSYZoBHkBjNEgMIaeOBGoH1LNllAKm+w8cEGLUTgmQduHHdAgQtYwEMVBWyRSg8cwLABHS8WIQEDE7oZRBAY1OCknKlwUWcYPYCBAgp7FuBoARQwwQQJztzyhwp+wEBjJpZ2StcGa9DQaSOBAAA7" width="32" height="32" title="This chat is using encryption"></div>	
