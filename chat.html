@@ -228,7 +228,7 @@
 					msgIV = CryptoJS.enc.Hex.parse(message.iv || 'ca123400777d00cd');
 					var decrypted = CryptoJS.AES.decrypt(message.ct, CryptoJS.enc.Hex.parse(password),{ iv:msgIV }); 
 					message.text = decrypted.toString(CryptoJS.enc.Utf8);
-				} catch (err) {}
+				} catch (err) {console.log(err);}
 				if (!message.text)
 					message.text = "Decryption failed";
 			}
@@ -246,7 +246,9 @@
 	function send()
 	{
 		var name = $('#nameInput').val();			
-		var text = $('#messageInput').val();					
+		var text = $('#messageInput').val();	
+		if (!text)
+			return;
 		if (encrypt)
 		{
 			var encrypted = CryptoJS.AES.encrypt(text, CryptoJS.enc.Hex.parse(password),{ iv: CryptoJS.lib.WordArray.random(32)});				
