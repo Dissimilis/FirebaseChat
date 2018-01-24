@@ -111,10 +111,11 @@
 		<span id="notificationsConfig">
 		<input value="" type="password" id="passwordInput" placeholder="Encryption password">	
 		<button id="persistPass" title="Persist encryption key to survive refresh">#</button>
-		<input type="checkbox" id="enableEncryption"> <span>Enable encryption</span>		
+		<input type="checkbox" id="enableEncryption"> <label> Enable encryption </label>
+		<input type="checkbox" id="enableNotifications"> <label> Enable notifications </label>
 	</div>
 	<div id = "msgInput">
-		<div id="optionsToggle" title="Toggle options">⚙</div>
+		<div id="optionsToggle" title="Toggle options">🔨</div>
 		<textarea id="messageInput" placeholder="Message" type="text"></textarea>
 		<button id="send">Send</button>
 	</div>
@@ -153,6 +154,8 @@
 	
 		$("#enableEncryption").prop('checked', false);
 		$('#nameInput').val(localStorage.getItem("nickname"));
+		notifyEnabled = JSON.parse(localStorage.getItem("enableNotifications"));
+		$('#enableNotifications').prop('checked', notifyEnabled);
 	
 		fbAttach();
 		/******** UNREAD MESSAGE NOTIFICATION *********/
@@ -164,7 +167,8 @@
 			enableEncryption();
 		}
 	});
-	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());});	
+	$('#enableNotifications').change(function(){localStorage.setItem("enableNotifications", $(this).prop('checked'));});
+	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());});
 	$('#passwordInput').change(function(){$("#enableEncryption").prop('checked', false);});
 	$('#send').click(function(){send();});
 	$('#persistPass').click(function(){
@@ -220,8 +224,9 @@
 			var message = snapshot.val();
 			if (message.ct) //encrypted
 			{
-				try {
-					var decrypted = CryptoJS.AES.decrypt(message.ct, CryptoJS.enc.Hex.parse(password),{ iv:iv });
+				try {				
+					msgIV = CryptoJS.enc.Hex.parse(message.iv || 'ca123400777d00cd');
+					var decrypted = CryptoJS.AES.decrypt(message.ct, CryptoJS.enc.Hex.parse(password),{ iv:msgIV }); 
 					message.text = decrypted.toString(CryptoJS.enc.Utf8);
 				} catch (err) {}
 				if (!message.text)
@@ -244,8 +249,8 @@
 		var text = $('#messageInput').val();					
 		if (encrypt)
 		{
-			var encrypted = CryptoJS.AES.encrypt(text, CryptoJS.enc.Hex.parse(password),{ iv:iv });				
-			fb.push({name: name, text: "This message is encrypted", ct: encrypted.toString(), _at: new Date().toISOString() });
+			var encrypted = CryptoJS.AES.encrypt(text, CryptoJS.enc.Hex.parse(password),{ iv: CryptoJS.lib.WordArray.random(32)});				
+			fb.push({name: name, text: "This message is encrypted", ct: encrypted.toString(), _at: new Date().toISOString(), iv: encrypted.iv.toString() });
 		}
 		else
 		{
@@ -254,7 +259,7 @@
 		$('#messageInput').val('');
 	}
 	function displayChatMessage(name, text, time, encrypted) {
-		var localTimeString = new Date(Date.parse(time)).toLocaleString();
+		var localTimeString = new Date(Date.parse(time)||time).toLocaleString("lt");
 		var altClass="";
 		var sameNickClass = "new"
 		var encryptedClass = "enc";
