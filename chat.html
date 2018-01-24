@@ -94,6 +94,7 @@
 			#inputs input { margin-bottom: 0.4em; }
 			#inputs textarea { min-width: 10em; width: 100%; }
 			#messages .alternate .msgBody { background: #f3ffee; }
+			#options span { color:gray;}
 			#optionsToggle {right: 15px; position:fixed; color:white; cursor: pointer;}
 			#send { font-size:10px;margin:0; border:0; line-height:12px; }
 			hr { margin: 3px; }
@@ -109,12 +110,11 @@
 		<input value="" id="nameInput" placeholder="Name" type="text">
 		<span id="notificationsConfig">
 		<input value="" type="password" id="passwordInput" placeholder="Encryption password">	
-		<button id="persistPass">#</button>
-		<input type="checkbox" id="enableEncryption"> Enable encryption
-		</span>
+		<button id="persistPass" title="Persist encryption key to survive refresh">#</button>
+		<input type="checkbox" id="enableEncryption"> <span>Enable encryption</span>		
 	</div>
 	<div id = "msgInput">
-		<div id="optionsToggle">⚙</div>
+		<div id="optionsToggle" title="Toggle options">⚙</div>
 		<textarea id="messageInput" placeholder="Message" type="text"></textarea>
 		<button id="send">Send</button>
 	</div>
