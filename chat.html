@@ -166,6 +166,10 @@
 			$("#enableEncryption").prop('checked', true);
 			enableEncryption();
 		}
+		//quick workaround to fix layout issue		
+		if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1){
+		     $("#messages").css("top","-150px");
+		}
 	});
 	$('#enableNotifications').change(function(){localStorage.setItem("enableNotifications", $(this).prop('checked'));});
 	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());});
