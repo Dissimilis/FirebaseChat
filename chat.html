@@ -297,7 +297,7 @@
 	}
 	
 	function notify(name, txt) {
-		if (name == $('#nameInput').val())
+		if (name == $('#nameInput').val() || !notifyEnabled)
 			return;
 		if (!("Notification" in window)) {
 			alert("This browser does not support desktop notification");
