@@ -10,10 +10,12 @@
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>	
+		<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/styles/solarized-dark.min.css">
+		<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.0/highlight.min.js"></script>
 		<style>
 		/*@import "https://fonts.googleapis.com/css?family=Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400";*/
 			body { 
-				background: #454044;
+				background: black;
 				font-family: Arial,sans-serif;
 				font-weight: normal;
 				font-size: 1.6em;
@@ -33,17 +35,16 @@
 				right: 25px;		
 			}
 			.row {
+				color: gray;
 				width: 95%;
 				margin: auto;
-				background: #d0cab4;
-				border-radius: 0.3em 0.3em 0 0;
+				background: #303030;				
 			}
 			#inputs-container {
 				position: fixed;
 				bottom: 0px;
 				width: 100%;
-				background: #3c2e2d;
-				border-radius: 0.3em 0.3em 0 0;
+				background: black;
 				overflow: hidden;
 				min-height: 100px;
 			}
@@ -54,15 +55,15 @@
 				width: 100%;
 				height: 100%;
 				overflow: auto; 
-				padding-bottom:127px;
+				padding-bottom:132px;
 			}
-			.msg pre { margin-top:5px; }
+			.msg pre { margin-top:5px; padding:0; }
 			.msg.row.same {	border-radius: 0; }
-			.msg.row.alternate { background: #f3ffee; }
+			.msg.row.alternate { background: #121212; }
 			.msg.row.alternate.same { border-radius: 0; }
 			.msg { padding-left: 0.2em;	}
 			.msg.new { margin-top: 0.2em; }
-			.msg.enc { border-right: 2px dotted green; }
+			.msg.enc { border-right: 1px solid green; }
 			.msg.new .nickname {
 				width: auto;
 				float: right;
@@ -70,8 +71,14 @@
 			.msg.same .nickname { display:none; }
 			.msg .nickname { display: inline-block; }
 			.msg .msgBody {
+				color: #e6e1dc;
 				padding-left: 0.2em;
 				display: inline-block;
+			}
+			.msg code.snip
+			{
+				background:#969696;
+				color:#126528;			
 			}
 			.msg .msgBody img
 			{
@@ -81,7 +88,7 @@
 				margin: 5px;				
 			}
 			.msg .time {
-				color:#657797;
+				color:#637763;
 				font-size: 10px;
 				margin:0;
 			}
@@ -101,7 +108,7 @@
 			button { margin-top: 0.2em; }
 			#inputs input { margin-bottom: 0.4em; }
 			#inputs textarea { min-width: 10em; width: 100%; height:82px; }
-			#messages .alternate .msgBody { background: #f3ffee; }
+			#messages .alternate .msgBody { background: #121212; }
 			#options span { color:gray;}
 			#optionsToggle {right: 15px; position:fixed; color:white; cursor: pointer;}
 			#send { font-size:10px;margin:0; border:0; line-height:12px; }
@@ -283,8 +290,10 @@
 		var body  = $("<div class='msgBody col-md-11' />").html(text).append($('<p class="time" />').text(localTimeString));
 		var textDiv= $('<div class="msg row '+altClass+' '+sameNickClass+' '+encryptedClass+'" />').html(body);
 		textDiv = textDiv.prepend($('<div class="nickname col-md-1" />').text(name));
-
-			
+		
+		body[0].querySelectorAll('pre code').forEach((block) => {
+			hljs.highlightBlock(block);
+		});			
 		textDiv.appendTo($('#messages'));
 		$('#messages')[0].scrollTop = $('#messages')[0].scrollHeight;
 	};
@@ -295,7 +304,13 @@
 		if (txt.startsWith("`")) { //pre
 			txt = txt.replace("`","");
 			txt = txt.replace(/^\s+|\s+$/g, ''); //trim start
-			return "<pre>"+txt+"</pre>";
+			return "<pre><code>"+txt+"</code></pre>";
+		}
+		var codeExp = /`(.+?)`/i;
+		if (txt.search(codeExp) >= 0)
+		{
+			console.log(txt);
+			return txt.replace(codeExp, '<code class="snip">$1</code>'); 
 		}
 		var imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/i;
 		var linkExp = /(\b(https?):[^ ]+)/i;
