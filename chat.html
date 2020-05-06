@@ -54,8 +54,9 @@
 				width: 100%;
 				height: 100%;
 				overflow: auto; 
-				padding-bottom:100px;
+				padding-bottom:127px;
 			}
+			.msg pre { margin-top:5px; }
 			.msg.row.same {	border-radius: 0; }
 			.msg.row.alternate { background: #f3ffee; }
 			.msg.row.alternate.same { border-radius: 0; }
@@ -72,6 +73,13 @@
 				padding-left: 0.2em;
 				display: inline-block;
 			}
+			.msg .msgBody img
+			{
+				max-height:300px;
+				width:auto;
+				border: 1px solid black;	
+				margin: 5px;				
+			}
 			.msg .time {
 				color:#657797;
 				font-size: 10px;
@@ -79,7 +87,7 @@
 			}
 			.col-md-1 { width: auto; }
 			img {
-				padding: 0.1em 0 0 0;
+				padding: 0 0 0 0;
 				max-width: 100%;
 				max-height: 100%;
 			}
@@ -92,7 +100,7 @@
 			}
 			button { margin-top: 0.2em; }
 			#inputs input { margin-bottom: 0.4em; }
-			#inputs textarea { min-width: 10em; width: 100%; }
+			#inputs textarea { min-width: 10em; width: 100%; height:82px; }
 			#messages .alternate .msgBody { background: #f3ffee; }
 			#options span { color:gray;}
 			#optionsToggle {right: 15px; position:fixed; color:white; cursor: pointer;}
@@ -166,10 +174,6 @@
 			$("#enableEncryption").prop('checked', true);
 			enableEncryption();
 		}
-		//quick workaround to fix layout issue		
-		if(navigator.userAgent.toLowerCase().indexOf('firefox') > -1){
-		     $("#messages").css("top","-150px");
-		}
 	});
 	$('#enableNotifications').change(function(){localStorage.setItem("enableNotifications", $(this).prop('checked'));});
 	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());});
@@ -192,16 +196,16 @@
 			}
 	});
 
+	$('#messageInput').keydown(function (e) {
+	if (e.keyCode == 13 && e.ctrlKey) {			
+			//return true;
+			$('#messageInput').val($('#messageInput').val() + "\n");
+	}});
 	$('#messageInput').keypress(function (e) {
-	if (e.keyCode == 13) {
-		if (!e.ctrlKey) {				
+	if (e.keyCode == 13 && !e.ctrlKey) {
 			send();
 			return false;
-		} else {
-			$('#messageInput').val($('#messageInput').val() + "\n");
-		}
-	}
-	});
+	}});
 	function enableEncryption()
 	{
 				userpass = $('#passwordInput').val();
@@ -287,17 +291,26 @@
 
 	function formatText(txt)
 	{
-	  var imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/i;
-	  var linkExp = /(\b(https?):[^ ]+)/i;
-	  txt = txt.replace("\n", "<br />");
-	  txt = txt.replace(imgExp, '<img width="100%" height="100%" src="$1" />'); 
-	  txt = txt.replace(linkExp, '<a href="$1" target="_blank">$1</a>'); 
-	  return txt;
+	    //console.log(txt);
+		if (txt.startsWith("`")) { //pre
+			txt = txt.replace("`","");
+			txt = txt.replace(/^\s+|\s+$/g, ''); //trim start
+			return "<pre>"+txt+"</pre>";
+		}
+		var imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/i;
+		var linkExp = /(\b(https?):[^ ]+)/i;
+		txt = txt.split("\n").join("<br />");
+		if (txt.search(imgExp) >= 0)
+		{
+			return txt.replace(imgExp, '<a href="$1" target="_blank"><img src="$1" /></a>'); 
+		}
+		txt = txt.replace(linkExp, '<a href="$1" target="_blank">$1</a>'); 
+		return txt;
 
 	}
 	
 	function notify(name, txt) {
-		if (name == $('#nameInput').val() || !notifyEnabled)
+		if (name == $('#nameInput').val())
 			return;
 		if (!("Notification" in window)) {
 			alert("This browser does not support desktop notification");
