@@ -190,7 +190,7 @@
 			localStorage.setItem("p", password.substring(0,password.length/2))
 	})
 	$("#optionsToggle").click(function() {
-	  $("#options").slideToggle( "fast" );
+	  $("#options").toggle( "fast" );
 	});
 	$("#enableEncryption").change(function() {
 			if(this.checked) {
