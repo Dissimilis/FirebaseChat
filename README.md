@@ -4,5 +4,3 @@ Standalone chat (single html file) based on Firebase.io. Suitable for very priva
 Supports end to end encryption with symetric password (using crypto-js)
 
 All third party dependencies are included from external CDNs.
-
-Preview: https://cot.lt/public/chat.html
