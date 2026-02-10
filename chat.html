@@ -4,7 +4,6 @@
 		<meta http-equiv="content-type" content="text/html; charset=utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js" integrity="sha384-zAlH3FrzsxdG1VfzWcyO9+PqCx5mQkLQPjgtp7jukmrbywGDj5nCivAb4j9ddOFu" crossorigin="anonymous"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.js" integrity="sha256-DrT5NfxfbHvMHux31Lkhxg42LY6of8TaYyK50jnxRnM=" crossorigin="anonymous"></script>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.2/styles/tomorrow-night.min.css" integrity="sha256-j9z54bBKr1YuuulDV9S89E6WbTjElOrGGWyJy3N0xS8=" crossorigin="anonymous" />
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.2/highlight.min.js" integrity="sha256-xBWd+VDTBasaTja2bfaCX4aA2H18UxRsjRFkK3rgfkI=" crossorigin="anonymous"></script>
 		<style>
@@ -357,1018 +356,761 @@
 		</style>
 		<title>Chat</title>
 	</head>
-  <body>
-    <div class="app">
-    <div id="messages" aria-live="polite"></div>
-	<div id="inputs-container">
-	<div id="inputs">
-	<div id="options">
-		<input value="" id="nameInput" placeholder="Name" type="text" aria-label="Nickname">
-		<div id="notificationsConfig">
-		<input value="" type="password" id="passwordInput" placeholder="Encryption password" aria-label="Encryption password">
-		<button id="persistPass" title="Persist derived unlock secret to survive refresh">Save key</button>
-		<div class="option-row">
-			<input type="checkbox" id="enableEncryption"> <label for="enableEncryption">Enable encryption</label>
+	<body>
+		<div class="app">
+			<div id="messages" aria-live="polite"></div>
+			<div id="inputs-container">
+				<div id="inputs">
+					<div id="options">
+						<input value="" id="nameInput" placeholder="Name" type="text" aria-label="Nickname">
+						<div id="notificationsConfig">
+							<input value="" type="password" id="passwordInput" placeholder="Encryption password" aria-label="Encryption password">
+							<button id="persistPass" title="Persist derived unlock secret to survive refresh">Save key</button>
+							<div class="option-row">
+								<input type="checkbox" id="enableEncryption"> <label for="enableEncryption">Enable encryption</label>
+							</div>
+							<div class="option-row">
+								<input type="checkbox" id="enableNotifications"> <label for="enableNotifications">Enable notifications</label>
+							</div>
+						</div>
+						<div id="cryptoStatus"></div>
+					</div>
+					<div id="msgInput">
+						<div id="optionsToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="options" title="Toggle options">&#x2699;</div>
+						<textarea id="messageInput" placeholder="Message" rows="1"></textarea>
+						<button id="attach" type="button">Attach</button>
+						<button id="send">Send</button>
+					</div>
+					<input id="fileInput" type="file" style="display:none;" />
+					<div id="pendingAttachment">
+						<span id="pendingAttachmentName"></span>
+						<button id="clearAttachment" type="button">Clear</button>
+					</div>
+				</div>
+			</div>
+			<div id="secureIcon" style="display:none;">&#x1F512;</div>
 		</div>
-		<div class="option-row">
-			<input type="checkbox" id="enableNotifications"> <label for="enableNotifications">Enable notifications</label>
+		<div id="imagePreviewOverlay" aria-hidden="true">
+			<div id="imagePreviewDialog" role="dialog" aria-modal="true" aria-label="Image preview">
+				<button id="imagePreviewClose" type="button" aria-label="Close image preview">X</button>
+				<img id="imagePreviewImage" alt="Attachment preview" />
+				<div id="imagePreviewMeta"></div>
+			</div>
 		</div>
-		</div>
-		<div id="cryptoStatus"></div>
-	</div>
-	<div id="msgInput">
-		<div id="optionsToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="options" title="Toggle options">&#x2699;</div>
-		<textarea id="messageInput" placeholder="Message" rows="1"></textarea>
-		<button id="attach" type="button">Attach</button>
-		<button id="send">Send</button>
-	</div>
-	<input id="fileInput" type="file" style="display:none;" />
-	<div id="pendingAttachment">
-		<span id="pendingAttachmentName"></span>
-		<button id="clearAttachment" type="button">Clear</button>
-	</div>
-	</div>
-	</div>
+		<script>
+(function() {
+'use strict';
 
-	</div>
-	<div id="imagePreviewOverlay" aria-hidden="true">
-		<div id="imagePreviewDialog" role="dialog" aria-modal="true" aria-label="Image preview">
-			<button id="imagePreviewClose" type="button" aria-label="Close image preview">X</button>
-			<img id="imagePreviewImage" alt="Attachment preview" />
-			<div id="imagePreviewMeta"></div>
-		</div>
-	</div>
-	<script>
-	/* ---------------------- CONFIGURATION ------------------------*/
-	var databaseUrl = 'https://antano-chatas.firebaseio.com/';
-	var messagesLimit = 147; //how many messages to show
-	var notificationsEnabled = true; //enables or disables desktop notifications globally
-	var encVersion = 1;
-	var encAlgorithm = 'AES-256-GCM';
-	var encKdf = 'PBKDF2-SHA-256';
-	var pbkdf2Iterations = 310000;
-	var maxAcceptedPbkdf2Iterations = 400000; // reject attacker-supplied high iteration counts from remote payloads
-	var persistTransformSalt = 'firebasechat-passphrase-persist-v1';
-	var persistTransformIterations = 120000;
-	var encSaltLengthBytes = 16;
-	var encIvLengthBytes = 12;
-	var maxAttachmentBytes = 200 * 1024;
-	var maxAttachmentBase64Length = Math.ceil((maxAttachmentBytes * 4) / 3) + 8;
-	var maxAttachmentCount = 1;
-	var pastedJpegQuality = 0.77;
+/* ===== CONFIGURATION ===== */
+const databaseUrl = 'https://antano-chatas.firebaseio.com/';
+const messagesLimit = 147;
+const notificationsEnabled = true;
+const encVersion = 1;
+const encAlgorithm = 'AES-256-GCM';
+const encKdf = 'PBKDF2-SHA-256';
+const pbkdf2Iterations = 310000;
+const maxAcceptedPbkdf2Iterations = 400000;
+const persistTransformSalt = 'firebasechat-passphrase-persist-v1';
+const persistTransformIterations = 120000;
+const encSaltLengthBytes = 16;
+const encIvLengthBytes = 12;
+const maxAttachmentBytes = 200 * 1024;
+const maxAttachmentBase64Length = Math.ceil((maxAttachmentBytes * 4) / 3) + 8;
+const maxAttachmentCount = 1;
+const pastedJpegQuality = 0.77;
 
-	/* ------------------ END OF CONFIGURATION ---------------------*/
+/* ===== STATE ===== */
+const fb = new Firebase(databaseUrl);
+const fbQuery = fb.endAt().limitToLast(messagesLimit);
+const supportsModernCrypto = !!(window.crypto && window.crypto.subtle && window.TextEncoder && window.TextDecoder);
+const title = "Chat";
+let lastName = "";
+let notifyEnabled = false;
+let password;
+let passwordFallback;
+let encrypt = false;
+let decryptFailureCount = 0;
+let cryptoStatusMessage = "";
+let messageRenderQueue = Promise.resolve();
+let attachGeneration = 0;
+let pendingAttachment = null;
+let dragDepth = 0;
+let imagePreviewOpen = false;
+let unreadMsgCount = 0;
+let notificationWarmupExpiresAt = 0;
+document.title = title;
 
-	var fb = new Firebase(databaseUrl);
-	var fbQuery = fb.endAt().limitToLast(messagesLimit);
-	var lastName = "";
-	var notifyEnabled = false;
-	var password;
-	var passwordFallback;
-	var encrypt = false;
-	var supportsModernCrypto = !!(window.crypto && window.crypto.subtle && window.TextEncoder && window.TextDecoder);
-	var decryptFailureCount = 0;
-	var cryptoStatusMessage = "";
-	var messageRenderQueue = Promise.resolve();
-	var attachGeneration = 0;
-	var pendingAttachment = null;
-	var dragDepth = 0;
-	var imagePreviewOpen = false;
+/* ===== DOM REFERENCES ===== */
+const $messages = document.getElementById('messages');
+const $nameInput = document.getElementById('nameInput');
+const $passwordInput = document.getElementById('passwordInput');
+const $messageInput = document.getElementById('messageInput');
+const $enableEncryption = document.getElementById('enableEncryption');
+const $enableNotifications = document.getElementById('enableNotifications');
+const $secureIcon = document.getElementById('secureIcon');
+const $cryptoStatus = document.getElementById('cryptoStatus');
+const $options = document.getElementById('options');
+const $optionsToggle = document.getElementById('optionsToggle');
+const $msgInput = document.getElementById('msgInput');
+const $sendBtn = document.getElementById('send');
+const $attachBtn = document.getElementById('attach');
+const $fileInput = document.getElementById('fileInput');
+const $pendingAttachment = document.getElementById('pendingAttachment');
+const $pendingAttachmentName = document.getElementById('pendingAttachmentName');
+const $clearAttachment = document.getElementById('clearAttachment');
+const $persistPass = document.getElementById('persistPass');
+const $imagePreviewOverlay = document.getElementById('imagePreviewOverlay');
+const $imagePreviewClose = document.getElementById('imagePreviewClose');
+const $imagePreviewImage = document.getElementById('imagePreviewImage');
+const $imagePreviewMeta = document.getElementById('imagePreviewMeta');
 
-	/******** UNREAD MESSAGE NOTIFICATION *********/
-	var unreadMsgCount = 0;
-	var hidden, visibilityChange;
-	var title = "Chat";
-	var notificationWarmupExpiresAt = 0;
-	document.title = title;
-	/**********************************************/
+/* ===== UTILITIES ===== */
+function escapeHtml(txt) {
+	return txt
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
 
-	$(function(){
-		$("#enableEncryption").prop('checked', false);
-		$('#persistPass').attr('title', 'Persist derived unlock secret (not raw passphrase)');
-		$('#nameInput').val(localStorage.getItem("nickname"));
-		var storedNotify = localStorage.getItem("enableNotifications");
-		if (storedNotify === null) {
-			notifyEnabled = notificationsEnabled;
-		} else {
-			notifyEnabled = storedNotify === "true";
+function formatBytes(bytes) {
+	if (bytes < 1024) return bytes + " B";
+	if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+	return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+function formatText(txt) {
+	if (txt === null || txt === undefined) {
+		return "";
+	}
+	txt = String(txt);
+	if (txt.startsWith("`")) {
+		txt = txt.replace(/^`|`$/g, "");
+		txt = txt.replace(/^\s+|\s+$/g, '');
+		return `<pre><code>${escapeHtml(txt)}</code></pre>`;
+	}
+	txt = escapeHtml(txt);
+	const codeExp = /`(.+?)`/gi;
+	if (txt.search(codeExp) >= 0) {
+		return txt.replace(codeExp, '<code class="snip">$1</code>');
+	}
+	const imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/gi;
+	const linkExp = /(\b(https?):[^ ]+)/gi;
+	txt = txt.split("\n").join("<br />");
+	if (txt.search(imgExp) >= 0) {
+		return txt.replace(imgExp, '<a href="$1" target="_blank"><img src="$1" /></a>');
+	}
+	txt = txt.replace(linkExp, '<a href="$1" target="_blank">$1</a>');
+	return txt;
+}
+
+function sanitizeFileName(name) {
+	const cleaned = (name || "").trim();
+	if (!cleaned) {
+		return "attachment.bin";
+	}
+	return cleaned;
+}
+
+function hasDraggedFiles(e) {
+	const dt = e.dataTransfer;
+	if (!dt) {
+		return false;
+	}
+	if (dt.types && dt.types.length) {
+		for (let i = 0; i < dt.types.length; i++) {
+			if (dt.types[i] === 'Files') {
+				return true;
+			}
 		}
-		$('#enableNotifications').prop('checked', notifyEnabled);
+	}
+	return !!(dt.files && dt.files.length);
+}
 
-		fbAttach();
-		/******** UNREAD MESSAGE NOTIFICATION *********/
-		setupVisibilityProps();
-		/**********************************************/
-		if (hasPersistedSplitSecret())
+function isImageAttachment(file) {
+	return !!(file && typeof file.type === "string" && /^image\//i.test(file.type));
+}
+
+function base64ByteLength(base64) {
+	if (!base64) {
+		return 0;
+	}
+	const len = base64.length;
+	let padding = 0;
+	if (len >= 2) {
+		if (base64.charAt(len - 1) === '=') padding += 1;
+		if (base64.charAt(len - 2) === '=') padding += 1;
+	}
+	return Math.floor((len * 3) / 4) - padding;
+}
+
+function safeMimeType(mime) {
+	if (typeof mime !== "string") {
+		return "application/octet-stream";
+	}
+	const trimmed = mime.trim().toLowerCase();
+	if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(trimmed)) {
+		return trimmed;
+	}
+	return "application/octet-stream";
+}
+
+function attachmentDataUrl(file) {
+	return `data:${safeMimeType(file.type)};base64,${file.data}`;
+}
+
+function createElement(tag, className, textContent) {
+	const el = document.createElement(tag);
+	if (className) el.className = className;
+	if (textContent) el.textContent = textContent;
+	return el;
+}
+
+/* ===== CRYPTO ===== */
+function utf8ToBytes(txt) {
+	return new TextEncoder().encode(txt);
+}
+
+function bytesToUtf8(bytes) {
+	return new TextDecoder().decode(bytes);
+}
+
+function randomBytes(length) {
+	const bytes = new Uint8Array(length);
+	window.crypto.getRandomValues(bytes);
+	return bytes;
+}
+
+function toBase64(bytes) {
+	let binary = "";
+	const chunkSize = 0x8000;
+	for (let i = 0; i < bytes.length; i += chunkSize) {
+		const chunk = bytes.subarray(i, i + chunkSize);
+		binary += String.fromCharCode.apply(null, chunk);
+	}
+	return btoa(binary);
+}
+
+function fromBase64(base64) {
+	const binary = atob(base64);
+	const bytes = new Uint8Array(binary.length);
+	for (let i = 0; i < binary.length; i++) {
+		bytes[i] = binary.charCodeAt(i);
+	}
+	return bytes;
+}
+
+async function deriveAesKey(passphrase, saltBytes, iterations) {
+	const keyMaterial = await window.crypto.subtle.importKey(
+		'raw',
+		utf8ToBytes(passphrase),
+		'PBKDF2',
+		false,
+		['deriveKey']
+	);
+	return window.crypto.subtle.deriveKey(
 		{
-			$("#enableEncryption").prop('checked', true);
-			enableEncryption();
+			name: 'PBKDF2',
+			salt: saltBytes,
+			iterations: iterations,
+			hash: 'SHA-256'
+		},
+		keyMaterial,
+		{
+			name: 'AES-GCM',
+			length: 256
+		},
+		false,
+		['encrypt', 'decrypt']
+	);
+}
+
+async function derivePersistedSecret(rawPassphrase) {
+	const keyMaterial = await window.crypto.subtle.importKey(
+		'raw',
+		utf8ToBytes(rawPassphrase),
+		'PBKDF2',
+		false,
+		['deriveBits']
+	);
+	const secretBits = await window.crypto.subtle.deriveBits(
+		{
+			name: 'PBKDF2',
+			salt: utf8ToBytes(persistTransformSalt),
+			iterations: persistTransformIterations,
+			hash: 'SHA-256'
+		},
+		keyMaterial,
+		256
+	);
+	return toBase64(new Uint8Array(secretBits));
+}
+
+async function encryptPayloadV1(payload, passphrase) {
+	const plainText = JSON.stringify(payload);
+	const salt = randomBytes(encSaltLengthBytes);
+	const iv = randomBytes(encIvLengthBytes);
+	const key = await deriveAesKey(passphrase, salt, pbkdf2Iterations);
+	const encryptedBuffer = await window.crypto.subtle.encrypt(
+		{ name: 'AES-GCM', iv: iv },
+		key,
+		utf8ToBytes(plainText)
+	);
+	return {
+		text: "This message is encrypted",
+		enc: {
+			v: encVersion,
+			alg: encAlgorithm,
+			kdf: encKdf,
+			iter: pbkdf2Iterations,
+			salt: toBase64(salt),
+			iv: toBase64(iv),
+			ct: toBase64(new Uint8Array(encryptedBuffer))
 		}
-		renderPendingAttachment();
-	});
-	$('#enableNotifications').change(function(){
-		notifyEnabled = $(this).prop('checked');
-		localStorage.setItem("enableNotifications", notifyEnabled);
-	});
-	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());});
-	$('#passwordInput').change(function(){
-		$("#enableEncryption").prop('checked', false);
+	};
+}
+
+async function decryptTextV1(encObj, passphrase) {
+	if (!encObj || encObj.v !== encVersion || encObj.alg !== encAlgorithm || encObj.kdf !== encKdf) {
+		throw new Error("Unsupported encryption payload");
+	}
+	const iterations = Number(encObj.iter);
+	if (!isFinite(iterations) || iterations <= 0 || iterations !== Math.floor(iterations) || iterations > maxAcceptedPbkdf2Iterations) {
+		throw new Error("Invalid KDF iteration count");
+	}
+	const salt = fromBase64(encObj.salt);
+	const iv = fromBase64(encObj.iv);
+	const ciphertext = fromBase64(encObj.ct);
+	const key = await deriveAesKey(passphrase, salt, iterations);
+	const decryptedBuffer = await window.crypto.subtle.decrypt(
+		{ name: 'AES-GCM', iv: iv },
+		key,
+		ciphertext
+	);
+	return bytesToUtf8(new Uint8Array(decryptedBuffer));
+}
+
+/* ===== PASSWORD MANAGEMENT ===== */
+function hasPersistedSplitSecret() {
+	return !!(localStorage.getItem("p") && window.location.hash);
+}
+
+function resolvePersistedSecret() {
+	const localHalf = localStorage.getItem("p");
+	let hashHalf = "";
+	if (window.location.hash) {
+		try {
+			hashHalf = decodeURIComponent(window.location.hash.substring(1));
+		} catch (err) {
+			hashHalf = "";
+		}
+	}
+	if (!localHalf || !hashHalf) {
+		return "";
+	}
+	return localHalf + hashHalf;
+}
+
+async function resolveActivePassword() {
+	const userpass = $passwordInput.value;
+	if (userpass) {
+		return {
+			primary: await derivePersistedSecret(userpass),
+			fallback: userpass
+		};
+	}
+	const persistedSecret = resolvePersistedSecret();
+	if (persistedSecret) {
+		return {
+			primary: persistedSecret,
+			fallback: ""
+		};
+	}
+	return null;
+}
+
+async function enableEncryption() {
+	if (!supportsModernCrypto) {
 		encrypt = false;
 		password = undefined;
 		passwordFallback = undefined;
-		$("#secureIcon").hide(1000);
-	});
-	$('#send').click(function(){send();});
-	$('#attach').click(function(){
-		$('#fileInput').click();
-	});
-	$('#fileInput').change(function() {
-		handleFileSelection(this.files, false);
-		this.value = "";
-	});
-	$('#clearAttachment').click(function() {
-		clearPendingAttachment();
-	});
-	$('#persistPass').click(function(){
-		persistDerivedSecret();
-	});
-	$("#optionsToggle").click(function() {
-		var opts = $("#options");
-		var expanded = $(this).attr('aria-expanded') === 'true';
-		if (expanded) {
-			opts.hide("fast");
-			$(this).attr('aria-expanded', 'false');
-		} else {
-			opts.css('display', 'flex').hide().show("fast");
-			$(this).attr('aria-expanded', 'true');
-		}
-	});
-	$("#optionsToggle").on('keydown', function(e) {
-		if (e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
-			$(this).click();
-		}
-	});
-	$("#enableEncryption").change(function() {
-		if(this.checked) {
-			enableEncryption();
-		} else
-		{
+		$enableEncryption.checked = false;
+		$secureIcon.style.display = 'none';
+		setCryptoStatusMessage("Modern encryption is not supported in this browser.");
+		return;
+	}
+
+	try {
+		const resolvedPassword = await resolveActivePassword();
+		if (!resolvedPassword) {
 			encrypt = false;
 			password = undefined;
 			passwordFallback = undefined;
-			$("#secureIcon").hide(1000);
+			$enableEncryption.checked = false;
+			$secureIcon.style.display = 'none';
+			setCryptoStatusMessage("Enter an encryption password first.");
+			return;
 		}
-	});
 
-	$('#messageInput').keydown(function (e) {
-		if (e.keyCode == 13 && e.ctrlKey) {
-			$('#messageInput').val($('#messageInput').val() + "\n");
-		}
-	});
-	$('#messageInput').keypress(function (e) {
-		if (e.keyCode == 13 && !e.ctrlKey) {
-			send();
-			return false;
-		}
-	});
-	$('#messageInput').on('input', function() {
-		this.style.height = 'auto';
-		this.style.height = this.scrollHeight + 'px';
-	});
-	$('#messageInput').on('paste', function(e) {
-		handlePasteAttachment(e);
-	});
-	$("#msgInput").on('dragenter', function(e) {
-		if (!hasDraggedFiles(e)) {
-			return;
-		}
-		e.preventDefault();
-		e.stopPropagation();
-		dragDepth += 1;
-		$("#msgInput").addClass("drag-over");
-	});
-	$("#msgInput").on('dragover', function(e) {
-		if (!hasDraggedFiles(e)) {
-			return;
-		}
-		e.preventDefault();
-		e.stopPropagation();
-	});
-	$("#msgInput").on('dragleave', function(e) {
-		if (!hasDraggedFiles(e)) {
-			return;
-		}
-		e.preventDefault();
-		e.stopPropagation();
-		dragDepth = Math.max(0, dragDepth - 1);
-		if (dragDepth === 0) {
-			$("#msgInput").removeClass("drag-over");
-		}
-	});
-	$("#msgInput").on('drop', function(e) {
-		if (!hasDraggedFiles(e)) {
-			return;
-		}
-		e.preventDefault();
-		e.stopPropagation();
-		dragDepth = 0;
-		$("#msgInput").removeClass("drag-over");
-		var files = e.originalEvent && e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
-		handleFileSelection(files, true);
-	});
-	$(document).on('dragover drop', function(e) {
-		if (!hasDraggedFiles(e)) {
-			return;
-		}
-		e.preventDefault();
-	});
-	$('#imagePreviewClose').on('click', function() {
-		closeImagePreview();
-	});
-	$('#imagePreviewOverlay').on('click', function(e) {
-		if (e.target && e.target.id === 'imagePreviewOverlay') {
-			closeImagePreview();
-		}
-	});
-	$(document).on('keydown', function(e) {
-		if (e.key === 'Escape' && imagePreviewOpen) {
-			closeImagePreview();
-		}
-	});
+		password = resolvedPassword.primary;
+		passwordFallback = resolvedPassword.fallback || undefined;
+		setCryptoStatusMessage("");
+		resetDecryptFailures();
+		$secureIcon.style.display = '';
+		fb.off();
+		$messages.innerHTML = '';
+		encrypt = true;
+		fbAttach();
+	} catch (err) {
+		console.log(err);
+		encrypt = false;
+		password = undefined;
+		passwordFallback = undefined;
+		$enableEncryption.checked = false;
+		$secureIcon.style.display = 'none';
+		setCryptoStatusMessage("Failed to initialize encryption.");
+	}
+}
 
-	function hasDraggedFiles(e)
-	{
-		var dt = e.originalEvent ? e.originalEvent.dataTransfer : null;
-		if (!dt) {
-			return false;
+async function persistDerivedSecret() {
+	if (!supportsModernCrypto) {
+		setCryptoStatusMessage("Modern encryption is not supported in this browser.");
+		return;
+	}
+	try {
+		const resolved = await resolveActivePassword();
+		if (!resolved || !resolved.primary) {
+			setCryptoStatusMessage("Enter an encryption password first.");
+			return;
 		}
-		if (dt.types && dt.types.length) {
-			for (var i = 0; i < dt.types.length; i++) {
-				if (dt.types[i] === 'Files') {
-					return true;
-				}
+		password = resolved.primary;
+		passwordFallback = resolved.fallback || undefined;
+		const half = Math.floor(password.length / 2);
+		localStorage.setItem("p", password.substring(0, half));
+		window.location.hash = encodeURIComponent(password.substring(half));
+		setCryptoStatusMessage("Derived unlock secret persisted.");
+	} catch (err) {
+		console.log(err);
+		setCryptoStatusMessage("Failed to persist unlock secret.");
+	}
+}
+
+/* ===== ATTACHMENTS ===== */
+function readFileAsAttachment(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => {
+			try {
+				const bytes = new Uint8Array(reader.result);
+				resolve({
+					name: sanitizeFileName(file.name),
+					type: file.type || "application/octet-stream",
+					size: bytes.length,
+					data: toBase64(bytes)
+				});
+			} catch (err) {
+				reject(err);
 			}
+		};
+		reader.onerror = () => {
+			reject(reader.error || new Error("File read failed"));
+		};
+		reader.readAsArrayBuffer(file);
+	});
+}
+
+async function handleFileSelection(files, fromDrop) {
+	if (!files || !files.length) {
+		return;
+	}
+	if (files.length > maxAttachmentCount) {
+		setCryptoStatusMessage("Only one attachment per message is supported.");
+		return;
+	}
+	const file = files[0];
+	if (!file) {
+		return;
+	}
+	if (file.size > maxAttachmentBytes) {
+		setCryptoStatusMessage(`Attachment exceeds max size (${formatBytes(maxAttachmentBytes)}).`);
+		return;
+	}
+	try {
+		pendingAttachment = await readFileAsAttachment(file);
+		renderPendingAttachment();
+		if (fromDrop) {
+			setCryptoStatusMessage("Attachment ready.");
+		} else {
+			setCryptoStatusMessage("");
 		}
-		return !!(dt.files && dt.files.length);
+	} catch (err) {
+		console.log(err);
+		setCryptoStatusMessage("Failed to read attachment.");
 	}
+}
 
-	function formatBytes(bytes)
-	{
-		if (bytes < 1024) return bytes + " B";
-		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-		return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+async function handlePasteAttachment(e) {
+	if (!e.clipboardData || !e.clipboardData.items) {
+		return;
 	}
-
-	function isImageAttachment(file)
-	{
-		return !!(file && typeof file.type === "string" && /^image\//i.test(file.type));
-	}
-
-	function base64ByteLength(base64)
-	{
-		if (!base64) {
-			return 0;
+	const items = e.clipboardData.items;
+	let imageFile = null;
+	for (let i = 0; i < items.length; i++) {
+		const item = items[i];
+		if (item && item.kind === "file" && item.type && item.type.indexOf("image/") === 0) {
+			imageFile = item.getAsFile();
+			break;
 		}
-		var len = base64.length;
-		var padding = 0;
-		if (len >= 2) {
-			if (base64.charAt(len - 1) === '=') padding += 1;
-			if (base64.charAt(len - 2) === '=') padding += 1;
+	}
+	if (!imageFile) {
+		return;
+	}
+	e.preventDefault();
+	try {
+		const jpegAttachment = await recompressPastedImageToJpeg(imageFile);
+		if (jpegAttachment.size > maxAttachmentBytes) {
+			setCryptoStatusMessage(`Pasted image exceeds max size (${formatBytes(maxAttachmentBytes)}).`);
+			return;
 		}
-		return Math.floor((len * 3) / 4) - padding;
+		pendingAttachment = jpegAttachment;
+		renderPendingAttachment();
+		setCryptoStatusMessage(`Image pasted and attached (JPEG quality ${Math.round(pastedJpegQuality * 100)}%).`);
+	} catch (err) {
+		console.log(err);
+		setCryptoStatusMessage("Failed to process pasted image.");
 	}
+}
 
-	function getPastedImageName()
-	{
-		var now = new Date();
-		var stamp = now.getFullYear().toString()
-			+ String(now.getMonth() + 1).padStart(2, '0')
-			+ String(now.getDate()).padStart(2, '0')
-			+ "-"
-			+ String(now.getHours()).padStart(2, '0')
-			+ String(now.getMinutes()).padStart(2, '0')
-			+ String(now.getSeconds()).padStart(2, '0');
-		return "pasted-image-" + stamp + ".jpg";
+function sanitizeIncomingAttachment(file) {
+	if (!file || typeof file !== "object") {
+		return null;
 	}
-
-	function fileToDataUrl(file)
-	{
-		return new Promise(function(resolve, reject) {
-			var reader = new FileReader();
-			reader.onload = function() { resolve(reader.result); };
-			reader.onerror = function() { reject(reader.error || new Error("Failed to read file as data URL")); };
-			reader.readAsDataURL(file);
-		});
+	const data = typeof file.data === "string" ? file.data : "";
+	const size = Number(file.size);
+	if (!data || !isFinite(size) || size <= 0 || size > maxAttachmentBytes) {
+		return null;
 	}
-
-	function loadImageFromDataUrl(dataUrl)
-	{
-		return new Promise(function(resolve, reject) {
-			var img = new Image();
-			img.onload = function() { resolve(img); };
-			img.onerror = function() { reject(new Error("Failed to load pasted image")); };
-			img.src = dataUrl;
-		});
+	if (data.length > maxAttachmentBase64Length) {
+		return null;
 	}
+	if (!/^[A-Za-z0-9+/=]+$/.test(data)) {
+		return null;
+	}
+	const decodedBytes = base64ByteLength(data);
+	if (decodedBytes <= 0 || decodedBytes > maxAttachmentBytes || Math.abs(decodedBytes - size) > 4) {
+		return null;
+	}
+	return {
+		name: sanitizeFileName(file.name),
+		type: (typeof file.type === "string" && file.type) ? file.type : "application/octet-stream",
+		size: Math.floor(size),
+		data: data
+	};
+}
 
-	async function recompressPastedImageToJpeg(file)
-	{
-		var dataUrl = await fileToDataUrl(file);
-		var img = await loadImageFromDataUrl(dataUrl);
-		var width = img.naturalWidth || img.width;
-		var height = img.naturalHeight || img.height;
-		if (!width || !height) {
-			throw new Error("Invalid pasted image dimensions");
+function parseDecryptedPayload(decryptedText) {
+	if (decryptedText === null || decryptedText === undefined) {
+		return { text: "", file: null };
+	}
+	try {
+		const parsed = JSON.parse(decryptedText);
+		if (parsed && typeof parsed === "object" && (Object.prototype.hasOwnProperty.call(parsed, "text") || Object.prototype.hasOwnProperty.call(parsed, "file"))) {
+			return {
+				text: parsed.text === undefined || parsed.text === null ? "" : String(parsed.text),
+				file: sanitizeIncomingAttachment(parsed.file)
+			};
 		}
-		var canvas = document.createElement('canvas');
+	} catch (err) {
+		// Keep compatibility with old encrypted text-only payloads.
+	}
+	return { text: String(decryptedText), file: null };
+}
+
+function getPastedImageName() {
+	const now = new Date();
+	const stamp = now.getFullYear().toString()
+		+ String(now.getMonth() + 1).padStart(2, '0')
+		+ String(now.getDate()).padStart(2, '0')
+		+ "-"
+		+ String(now.getHours()).padStart(2, '0')
+		+ String(now.getMinutes()).padStart(2, '0')
+		+ String(now.getSeconds()).padStart(2, '0');
+	return `pasted-image-${stamp}.jpg`;
+}
+
+function fileToDataUrl(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => { resolve(reader.result); };
+		reader.onerror = () => { reject(reader.error || new Error("Failed to read file as data URL")); };
+		reader.readAsDataURL(file);
+	});
+}
+
+function loadImageFromDataUrl(dataUrl) {
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.onload = () => { resolve(img); };
+		img.onerror = () => { reject(new Error("Failed to load pasted image")); };
+		img.src = dataUrl;
+	});
+}
+
+async function recompressPastedImageToJpeg(file) {
+	const dataUrl = await fileToDataUrl(file);
+	const img = await loadImageFromDataUrl(dataUrl);
+	const originalWidth = img.naturalWidth || img.width;
+	const originalHeight = img.naturalHeight || img.height;
+	if (!originalWidth || !originalHeight) {
+		throw new Error("Invalid pasted image dimensions");
+	}
+	const canvas = document.createElement('canvas');
+	const ctx = canvas.getContext('2d', { alpha: false });
+	if (!ctx) {
+		throw new Error("Canvas context unavailable");
+	}
+
+	let width = originalWidth;
+	let height = originalHeight;
+	const minDimension = 64;
+	const maxAttempts = 12;
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
 		canvas.width = width;
 		canvas.height = height;
-		var ctx = canvas.getContext('2d', { alpha: false });
-		if (!ctx) {
-			throw new Error("Canvas context unavailable");
-		}
 		ctx.fillStyle = '#ffffff';
 		ctx.fillRect(0, 0, width, height);
 		ctx.drawImage(img, 0, 0, width, height);
-		var jpegDataUrl = canvas.toDataURL('image/jpeg', pastedJpegQuality);
-		var idx = jpegDataUrl.indexOf(',');
-		var base64 = idx >= 0 ? jpegDataUrl.substring(idx + 1) : "";
+		const jpegDataUrl = canvas.toDataURL('image/jpeg', pastedJpegQuality);
+		const idx = jpegDataUrl.indexOf(',');
+		const base64 = idx >= 0 ? jpegDataUrl.substring(idx + 1) : "";
 		if (!base64) {
 			throw new Error("JPEG recompression failed");
 		}
-		return {
-			name: getPastedImageName(),
-			type: "image/jpeg",
-			size: base64ByteLength(base64),
-			data: base64
-		};
-	}
-
-	function renderPendingAttachment()
-	{
-		if (!pendingAttachment) {
-			$("#pendingAttachmentName").text("");
-			$("#pendingAttachment").hide();
-			return;
-		}
-		$("#pendingAttachmentName").text("Attached: " + pendingAttachment.name + " (" + formatBytes(pendingAttachment.size) + ")");
-		$("#pendingAttachment").css("display", "flex");
-	}
-
-	function clearPendingAttachment()
-	{
-		pendingAttachment = null;
-		renderPendingAttachment();
-	}
-
-	function sanitizeFileName(name)
-	{
-		var cleaned = (name || "").trim();
-		if (!cleaned) {
-			return "attachment.bin";
-		}
-		return cleaned;
-	}
-
-	function readFileAsAttachment(file)
-	{
-		return new Promise(function(resolve, reject) {
-			var reader = new FileReader();
-			reader.onload = function() {
-				try {
-					var bytes = new Uint8Array(reader.result);
-					resolve({
-						name: sanitizeFileName(file.name),
-						type: file.type || "application/octet-stream",
-						size: bytes.length,
-						data: toBase64(bytes)
-					});
-				} catch (err) {
-					reject(err);
-				}
-			};
-			reader.onerror = function() {
-				reject(reader.error || new Error("File read failed"));
-			};
-			reader.readAsArrayBuffer(file);
-		});
-	}
-
-	async function handlePasteAttachment(e)
-	{
-		var originalEvent = e.originalEvent;
-		if (!originalEvent || !originalEvent.clipboardData || !originalEvent.clipboardData.items) {
-			return;
-		}
-		var items = originalEvent.clipboardData.items;
-		var imageFile = null;
-		for (var i = 0; i < items.length; i++) {
-			var item = items[i];
-			if (item && item.kind === "file" && item.type && item.type.indexOf("image/") === 0) {
-				imageFile = item.getAsFile();
-				break;
-			}
-		}
-		if (!imageFile) {
-			return;
-		}
-		e.preventDefault();
-		try {
-			var jpegAttachment = await recompressPastedImageToJpeg(imageFile);
-			if (jpegAttachment.size > maxAttachmentBytes) {
-				setCryptoStatusMessage("Pasted image exceeds max size after JPEG compression (" + formatBytes(maxAttachmentBytes) + ").");
-				return;
-			}
-			pendingAttachment = jpegAttachment;
-			renderPendingAttachment();
-			setCryptoStatusMessage("Image pasted and attached (JPEG quality " + Math.round(pastedJpegQuality * 100) + "%).");
-		} catch (err) {
-			console.log(err);
-			setCryptoStatusMessage("Failed to process pasted image.");
-		}
-	}
-
-	async function handleFileSelection(files, fromDrop)
-	{
-		if (!files || !files.length) {
-			return;
-		}
-		if (files.length > maxAttachmentCount) {
-			setCryptoStatusMessage("Only one attachment per message is supported.");
-			return;
-		}
-		var file = files[0];
-		if (!file) {
-			return;
-		}
-		if (file.size > maxAttachmentBytes) {
-			setCryptoStatusMessage("Attachment exceeds max size (" + formatBytes(maxAttachmentBytes) + ").");
-			return;
-		}
-		try {
-			pendingAttachment = await readFileAsAttachment(file);
-			renderPendingAttachment();
-			if (fromDrop) {
-				setCryptoStatusMessage("Attachment ready.");
-			} else {
-				setCryptoStatusMessage("");
-			}
-		} catch (err) {
-			console.log(err);
-			setCryptoStatusMessage("Failed to read attachment.");
-		}
-	}
-
-	function sanitizeIncomingAttachment(file)
-	{
-		if (!file || typeof file !== "object") {
-			return null;
-		}
-		var data = typeof file.data === "string" ? file.data : "";
-		var size = Number(file.size);
-		if (!data || !isFinite(size) || size <= 0 || size > maxAttachmentBytes) {
-			return null;
-		}
-		if (data.length > maxAttachmentBase64Length) {
-			return null;
-		}
-		if (!/^[A-Za-z0-9+/=]+$/.test(data)) {
-			return null;
-		}
-		var decodedBytes = base64ByteLength(data);
-		if (decodedBytes <= 0 || decodedBytes > maxAttachmentBytes || Math.abs(decodedBytes - size) > 4) {
-			return null;
-		}
-		return {
-			name: sanitizeFileName(file.name),
-			type: (typeof file.type === "string" && file.type) ? file.type : "application/octet-stream",
-			size: Math.floor(size),
-			data: data
-		};
-	}
-
-	function parseDecryptedPayload(decryptedText)
-	{
-		if (decryptedText === null || decryptedText === undefined) {
-			return { text: "", file: null };
-		}
-		try {
-			var parsed = JSON.parse(decryptedText);
-			if (parsed && typeof parsed === "object" && (Object.prototype.hasOwnProperty.call(parsed, "text") || Object.prototype.hasOwnProperty.call(parsed, "file"))) {
-				return {
-					text: parsed.text === undefined || parsed.text === null ? "" : String(parsed.text),
-					file: sanitizeIncomingAttachment(parsed.file)
-				};
-			}
-		} catch (err) {
-			// Keep compatibility with old encrypted text-only payloads.
-		}
-		return { text: String(decryptedText), file: null };
-	}
-
-	function safeMimeType(mime)
-	{
-		if (typeof mime !== "string") {
-			return "application/octet-stream";
-		}
-		var trimmed = mime.trim().toLowerCase();
-		if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(trimmed)) {
-			return trimmed;
-		}
-		return "application/octet-stream";
-	}
-
-	function attachmentDataUrl(file)
-	{
-		return "data:" + safeMimeType(file.type) + ";base64," + file.data;
-	}
-
-	function downloadAttachment(file)
-	{
-		var bytes = fromBase64(file.data);
-		var blob = new Blob([bytes], { type: safeMimeType(file.type) });
-		var url = URL.createObjectURL(blob);
-		var anchor = document.createElement('a');
-		anchor.href = url;
-		anchor.download = sanitizeFileName(file.name);
-		anchor.rel = 'noopener';
-		document.body.appendChild(anchor);
-		anchor.click();
-		document.body.removeChild(anchor);
-		setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
-	}
-
-	function closeImagePreview()
-	{
-		imagePreviewOpen = false;
-		$("#imagePreviewOverlay").hide().attr("aria-hidden", "true");
-		$("#imagePreviewImage").attr("src", "");
-		$("#imagePreviewMeta").text("");
-	}
-
-	function openImagePreview(file)
-	{
-		if (!file || !isImageAttachment(file)) {
-			return;
-		}
-		var dataUrl = attachmentDataUrl(file);
-		var imgEl = $("#imagePreviewImage");
-		imgEl.off('load').on('load', function() {
-			var w = this.naturalWidth || this.width || 0;
-			var h = this.naturalHeight || this.height || 0;
-			var meta = sanitizeFileName(file.name) + " • " + formatBytes(file.size) + " • " + w + "x" + h;
-			$("#imagePreviewMeta").text(meta);
-		});
-		imgEl.attr("src", dataUrl);
-		$("#imagePreviewOverlay").css("display", "flex").attr("aria-hidden", "false");
-		imagePreviewOpen = true;
-	}
-
-	function renderCryptoStatus()
-	{
-		var msg = cryptoStatusMessage;
-		if (!msg && decryptFailureCount > 0) {
-			msg = decryptFailureCount + " encrypted message(s) could not be decrypted.";
-		}
-		if (msg) {
-			$("#cryptoStatus").text(msg).show();
-		} else {
-			$("#cryptoStatus").hide().text("");
-		}
-	}
-
-	function setCryptoStatusMessage(msg)
-	{
-		cryptoStatusMessage = msg || "";
-		renderCryptoStatus();
-	}
-
-	function incrementDecryptFailure()
-	{
-		decryptFailureCount += 1;
-		renderCryptoStatus();
-	}
-
-	function resetDecryptFailures()
-	{
-		decryptFailureCount = 0;
-		renderCryptoStatus();
-	}
-
-	function hasPersistedSplitSecret()
-	{
-		return !!(localStorage.getItem("p") && window.location.hash);
-	}
-
-	function resolvePersistedSecret()
-	{
-		var localHalf = localStorage.getItem("p");
-		var hashHalf = "";
-		if (window.location.hash) {
-			try {
-				hashHalf = decodeURIComponent(window.location.hash.substring(1));
-			} catch (err) {
-				hashHalf = "";
-			}
-		}
-		if (!localHalf || !hashHalf) {
-			return "";
-		}
-		return localHalf + hashHalf;
-	}
-
-	async function resolveActivePassword()
-	{
-		var userpass = $('#passwordInput').val();
-		if (userpass) {
+		const size = base64ByteLength(base64);
+		if (size > 0 && size <= maxAttachmentBytes) {
 			return {
-				primary: await derivePersistedSecret(userpass),
-				fallback: userpass
+				name: getPastedImageName(),
+				type: "image/jpeg",
+				size: size,
+				data: base64
 			};
 		}
-		var persistedSecret = resolvePersistedSecret();
-		if (persistedSecret) {
-			return {
-				primary: persistedSecret,
-				fallback: ""
-			};
+
+		if (width <= minDimension || height <= minDimension) {
+			break;
 		}
+
+		let areaRatio = Math.sqrt(maxAttachmentBytes / Math.max(size, 1));
+		if (!isFinite(areaRatio) || areaRatio <= 0) {
+			areaRatio = 0.8;
+		}
+		const shrink = Math.min(0.9, Math.max(0.5, areaRatio * 0.95));
+		let nextWidth = Math.max(minDimension, Math.floor(width * shrink));
+		let nextHeight = Math.max(minDimension, Math.floor(height * shrink));
+		if (nextWidth === width && nextHeight === height) {
+			nextWidth = Math.max(minDimension, width - 64);
+			nextHeight = Math.max(minDimension, height - 64);
+		}
+		width = nextWidth;
+		height = nextHeight;
+	}
+	throw new Error("Pasted image exceeds max size even after resize");
+}
+
+function downloadAttachment(file) {
+	const bytes = fromBase64(file.data);
+	const blob = new Blob([bytes], { type: safeMimeType(file.type) });
+	const url = URL.createObjectURL(blob);
+	const anchor = document.createElement('a');
+	anchor.href = url;
+	anchor.download = sanitizeFileName(file.name);
+	anchor.rel = 'noopener';
+	document.body.appendChild(anchor);
+	anchor.click();
+	document.body.removeChild(anchor);
+	setTimeout(() => { URL.revokeObjectURL(url); }, 1500);
+}
+
+/* ===== UI RENDERING ===== */
+function renderPendingAttachment() {
+	if (!pendingAttachment) {
+		$pendingAttachmentName.textContent = "";
+		$pendingAttachment.style.display = 'none';
+		return;
+	}
+	$pendingAttachmentName.textContent = `Attached: ${pendingAttachment.name} (${formatBytes(pendingAttachment.size)})`;
+	$pendingAttachment.style.display = 'flex';
+}
+
+function clearPendingAttachment() {
+	pendingAttachment = null;
+	renderPendingAttachment();
+}
+
+function renderCryptoStatus() {
+	let msg = cryptoStatusMessage;
+	if (!msg && decryptFailureCount > 0) {
+		msg = `${decryptFailureCount} encrypted message(s) could not be decrypted.`;
+	}
+	if (msg) {
+		$cryptoStatus.textContent = msg;
+		$cryptoStatus.style.display = '';
+	} else {
+		$cryptoStatus.style.display = 'none';
+		$cryptoStatus.textContent = "";
+	}
+}
+
+function setCryptoStatusMessage(msg) {
+	cryptoStatusMessage = msg || "";
+	renderCryptoStatus();
+}
+
+function incrementDecryptFailure() {
+	decryptFailureCount += 1;
+	renderCryptoStatus();
+}
+
+function resetDecryptFailures() {
+	decryptFailureCount = 0;
+	renderCryptoStatus();
+}
+
+function createAttachmentElement(file) {
+	if (!file) {
 		return null;
 	}
-
-	async function enableEncryption()
-	{
-		if (!supportsModernCrypto) {
-			encrypt = false;
-			password = undefined;
-			passwordFallback = undefined;
-			$("#enableEncryption").prop('checked', false);
-			$("#secureIcon").hide(0);
-			setCryptoStatusMessage("Modern encryption is not supported in this browser.");
-			return;
-		}
-
-		try {
-			var resolvedPassword = await resolveActivePassword();
-			if (!resolvedPassword) {
-				encrypt = false;
-				password = undefined;
-				passwordFallback = undefined;
-				$("#enableEncryption").prop('checked', false);
-				$("#secureIcon").hide(0);
-				setCryptoStatusMessage("Enter an encryption password first.");
-				return;
-			}
-
-			password = resolvedPassword.primary;
-			passwordFallback = resolvedPassword.fallback || undefined;
-			setCryptoStatusMessage("");
-			resetDecryptFailures();
-			$("#secureIcon").show(2200);
-			fb.off();
-			$('#messages').html('');
-			encrypt = true;
-			fbAttach();
-		} catch (err) {
-			console.log(err);
-			encrypt = false;
-			password = undefined;
-			passwordFallback = undefined;
-			$("#enableEncryption").prop('checked', false);
-			$("#secureIcon").hide(0);
-			setCryptoStatusMessage("Failed to initialize encryption.");
-		}
-	}
-
-	function utf8ToBytes(txt)
-	{
-		return new TextEncoder().encode(txt);
-	}
-
-	function bytesToUtf8(bytes)
-	{
-		return new TextDecoder().decode(bytes);
-	}
-
-	function randomBytes(length)
-	{
-		var bytes = new Uint8Array(length);
-		window.crypto.getRandomValues(bytes);
-		return bytes;
-	}
-
-	function toBase64(bytes)
-	{
-		var binary = "";
-		var chunkSize = 0x8000;
-		for (var i = 0; i < bytes.length; i += chunkSize) {
-			var chunk = bytes.subarray(i, i + chunkSize);
-			binary += String.fromCharCode.apply(null, chunk);
-		}
-		return btoa(binary);
-	}
-
-	function fromBase64(base64)
-	{
-		var binary = atob(base64);
-		var bytes = new Uint8Array(binary.length);
-		for (var i = 0; i < binary.length; i++) {
-			bytes[i] = binary.charCodeAt(i);
-		}
-		return bytes;
-	}
-
-	async function deriveAesKey(passphrase, saltBytes, iterations)
-	{
-		var keyMaterial = await window.crypto.subtle.importKey(
-			'raw',
-			utf8ToBytes(passphrase),
-			'PBKDF2',
-			false,
-			['deriveKey']
-		);
-		return window.crypto.subtle.deriveKey(
-			{
-				name: 'PBKDF2',
-				salt: saltBytes,
-				iterations: iterations,
-				hash: 'SHA-256'
-			},
-			keyMaterial,
-			{
-				name: 'AES-GCM',
-				length: 256
-			},
-			false,
-			['encrypt', 'decrypt']
-		);
-	}
-
-	async function derivePersistedSecret(rawPassphrase)
-	{
-		var keyMaterial = await window.crypto.subtle.importKey(
-			'raw',
-			utf8ToBytes(rawPassphrase),
-			'PBKDF2',
-			false,
-			['deriveBits']
-		);
-		var secretBits = await window.crypto.subtle.deriveBits(
-			{
-				name: 'PBKDF2',
-				salt: utf8ToBytes(persistTransformSalt),
-				iterations: persistTransformIterations,
-				hash: 'SHA-256'
-			},
-			keyMaterial,
-			256
-		);
-		return toBase64(new Uint8Array(secretBits));
-	}
-
-	async function persistDerivedSecret()
-	{
-		if (!supportsModernCrypto) {
-			setCryptoStatusMessage("Modern encryption is not supported in this browser.");
-			return;
-		}
-		try {
-			var resolved = await resolveActivePassword();
-			if (!resolved || !resolved.primary) {
-				setCryptoStatusMessage("Enter an encryption password first.");
-				return;
-			}
-			password = resolved.primary;
-			passwordFallback = resolved.fallback || undefined;
-			var half = Math.floor(password.length / 2);
-			localStorage.setItem("p", password.substring(0, half));
-			window.location.hash = encodeURIComponent(password.substring(half));
-			setCryptoStatusMessage("Derived unlock secret persisted.");
-		} catch (err) {
-			console.log(err);
-			setCryptoStatusMessage("Failed to persist unlock secret.");
-		}
-	}
-
-	async function encryptPayloadV1(payload, passphrase)
-	{
-		var plainText = JSON.stringify(payload);
-		var salt = randomBytes(encSaltLengthBytes);
-		var iv = randomBytes(encIvLengthBytes);
-		var key = await deriveAesKey(passphrase, salt, pbkdf2Iterations);
-		var encryptedBuffer = await window.crypto.subtle.encrypt(
-			{ name: 'AES-GCM', iv: iv },
-			key,
-			utf8ToBytes(plainText)
-		);
-		return {
-			text: "This message is encrypted",
-			enc: {
-				v: encVersion,
-				alg: encAlgorithm,
-				kdf: encKdf,
-				iter: pbkdf2Iterations,
-				salt: toBase64(salt),
-				iv: toBase64(iv),
-				ct: toBase64(new Uint8Array(encryptedBuffer))
-			}
-		};
-	}
-
-	async function decryptTextV1(encObj, passphrase)
-	{
-		if (!encObj || encObj.v !== encVersion || encObj.alg !== encAlgorithm || encObj.kdf !== encKdf) {
-			throw new Error("Unsupported encryption payload");
-		}
-		var iterations = Number(encObj.iter);
-		if (!isFinite(iterations) || iterations <= 0 || iterations !== Math.floor(iterations) || iterations > maxAcceptedPbkdf2Iterations) {
-			throw new Error("Invalid KDF iteration count");
-		}
-		var salt = fromBase64(encObj.salt);
-		var iv = fromBase64(encObj.iv);
-		var ciphertext = fromBase64(encObj.ct);
-		var key = await deriveAesKey(passphrase, salt, iterations);
-		var decryptedBuffer = await window.crypto.subtle.decrypt(
-			{ name: 'AES-GCM', iv: iv },
-			key,
-			ciphertext
-		);
-		return bytesToUtf8(new Uint8Array(decryptedBuffer));
-	}
-
-	async function processIncomingMessage(snapshot)
-	{
-		var message = snapshot.val();
-		if (!message) {
-			return;
-		}
-
-		var isEncrypted = false;
-		var displayText = message.text === undefined || message.text === null ? "" : String(message.text);
-		var displayFile = sanitizeIncomingAttachment(message.file);
-		if (message.enc) {
-			isEncrypted = true;
-			if (!password) {
-				displayText = "Encrypted message. Enable encryption to decrypt.";
-				displayFile = null;
-			} else {
-				var decryptionCandidates = [password];
-				if (passwordFallback && passwordFallback !== password) {
-					decryptionCandidates.push(passwordFallback);
-				}
-				try {
-					var decryptedTextRaw;
-					var lastError;
-					for (var i = 0; i < decryptionCandidates.length; i++) {
-						try {
-							decryptedTextRaw = await decryptTextV1(message.enc, decryptionCandidates[i]);
-							break;
-						} catch (candidateErr) {
-							lastError = candidateErr;
-						}
-					}
-					if (decryptedTextRaw === undefined) {
-						throw lastError || new Error("Decryption failed");
-					}
-					var decryptedPayload = parseDecryptedPayload(decryptedTextRaw);
-					displayText = decryptedPayload.text;
-					displayFile = decryptedPayload.file;
-				} catch (err) {
-					console.log(err);
-					displayText = "Decryption failed (wrong password or corrupted data)";
-					displayFile = null;
-					incrementDecryptFailure();
-				}
-			}
-		} else if (message.ct) {
-			isEncrypted = true;
-			displayText = "Legacy encrypted message format is no longer supported.";
-			displayFile = null;
-		}
-
-		displayChatMessage(message.name, displayText, message._at, isEncrypted, displayFile);
-		/******** UNREAD MESSAGE NOTIFICATION *********/
-		notifyAboutUnread(snapshot);
-		/**********************************************/
-		if (notifyEnabled && Date.now() >= notificationWarmupExpiresAt) {
-			var notifyText = displayText;
-			if (!notifyText && displayFile) {
-				notifyText = "[Attachment] " + displayFile.name;
-			}
-			if (!notifyText) {
-				notifyText = "New message";
-			}
-			notify(message.name, notifyText);
-		}
-		lastName = message.name;
-	}
-
-	function fbAttach()
-	{
-		attachGeneration += 1;
-		var currentGeneration = attachGeneration;
-		messageRenderQueue = Promise.resolve();
-		notificationWarmupExpiresAt = Date.now() + 17000;
-		fbQuery.on('child_added', function (snapshot) {
-			if (currentGeneration !== attachGeneration) {
-				return;
-			}
-			messageRenderQueue = messageRenderQueue
-				.then(function () {
-					if (currentGeneration !== attachGeneration) {
-						return;
-					}
-					return processIncomingMessage(snapshot);
-				})
-				.catch(function (err) { console.log(err); });
+	if (isImageAttachment(file)) {
+		const inlineWrap = createElement('div', 'msgInlineAttachment');
+		const thumbBtn = createElement('button', 'msgAttachmentThumb');
+		thumbBtn.type = 'button';
+		thumbBtn.title = 'Open full size image';
+		const thumbImg = document.createElement('img');
+		thumbImg.alt = sanitizeFileName(file.name);
+		thumbImg.src = attachmentDataUrl(file);
+		thumbBtn.appendChild(thumbImg);
+		thumbBtn.addEventListener('click', () => {
+			openImagePreview(file);
 		});
-	}
+		inlineWrap.appendChild(thumbBtn);
+		inlineWrap.appendChild(createElement('div', 'msgAttachmentMeta', `${sanitizeFileName(file.name)} \u2022 ${formatBytes(file.size)}`));
 
-	async function send()
-	{
-		var name = $('#nameInput').val();
-		var text = $('#messageInput').val();
-		var hasAttachment = !!pendingAttachment;
-		if (!text && !hasAttachment)
-			return;
-		if (encrypt)
-		{
-			if (!supportsModernCrypto || !password) {
-				setCryptoStatusMessage("Encryption is enabled but an active password is missing.");
-				return;
-			}
-			try {
-				var encryptedPayload = await encryptPayloadV1({ text: text, file: pendingAttachment || undefined }, password);
-				fb.push({name: name, text: encryptedPayload.text, enc: encryptedPayload.enc, _at: new Date().toISOString()});
-			} catch (err) {
-				console.log(err);
-				setCryptoStatusMessage("Failed to encrypt message.");
-				return;
-			}
-		}
-		else
-		{
-			var plainMessage = {name : name, text : text, _at: new Date().toISOString()};
-			if (pendingAttachment) {
-				plainMessage.file = pendingAttachment;
-			}
-			fb.push(plainMessage);
-		}
-		setCryptoStatusMessage("");
-		clearPendingAttachment();
-		$('#messageInput').val('');
-		$('#messageInput')[0].style.height = 'auto';
-		$('#messageInput').focus();
-	}
+		const inlineAction = createElement('div', 'msgAttachmentAction');
+		const viewLink = document.createElement('a');
+		viewLink.href = '#';
+		viewLink.textContent = 'View full size';
+		viewLink.addEventListener('click', (e) => {
+			e.preventDefault();
+			openImagePreview(file);
+		});
+		inlineAction.appendChild(viewLink);
+		inlineAction.appendChild(document.createTextNode(' \u2022 '));
 
-	function createAttachmentElement(file)
-	{
-		if (!file) {
-			return null;
-		}
-		if (isImageAttachment(file)) {
-			var inlineWrap = $('<div class="msgInlineAttachment" />');
-			var thumbBtn = $('<button type="button" class="msgAttachmentThumb" title="Open full size image" />');
-			var thumbImg = $('<img alt="" />');
-			thumbImg.attr("alt", sanitizeFileName(file.name));
-			thumbImg.attr("src", attachmentDataUrl(file));
-			thumbBtn.append(thumbImg);
-			thumbBtn.on('click', function() {
-				openImagePreview(file);
-			});
-			inlineWrap.append(thumbBtn);
-			inlineWrap.append($('<div class="msgAttachmentMeta" />').text(sanitizeFileName(file.name) + " • " + formatBytes(file.size)));
-
-			var inlineAction = $('<div class="msgAttachmentAction" />');
-			var viewLink = $('<a href="#" />').text("View full size");
-			viewLink.on('click', function(e) {
-				e.preventDefault();
-				openImagePreview(file);
-			});
-			inlineAction.append(viewLink).append(document.createTextNode(" • "));
-
-			var inlineDownload = $('<a href="#" />').text("Download");
-			inlineDownload.on('click', function(e) {
-				e.preventDefault();
-				try {
-					downloadAttachment(file);
-				} catch (err) {
-					console.log(err);
-					setCryptoStatusMessage("Failed to prepare attachment download.");
-				}
-			});
-			inlineAction.append(inlineDownload);
-			inlineWrap.append(inlineAction);
-			return inlineWrap;
-		}
-
-		var card = $('<div class="msgAttachment" />');
-		card.append($('<div class="msgAttachmentName" />').text(file.name));
-		card.append($('<div class="msgAttachmentMeta" />').text((file.type || "application/octet-stream") + " • " + formatBytes(file.size)));
-		var action = $('<div class="msgAttachmentAction" />');
-		var downloadLink = $('<a href="#" />').text("Download");
-		downloadLink.on('click', function(e) {
+		const inlineDownload = document.createElement('a');
+		inlineDownload.href = '#';
+		inlineDownload.textContent = 'Download';
+		inlineDownload.addEventListener('click', (e) => {
 			e.preventDefault();
 			try {
 				downloadAttachment(file);
@@ -1377,139 +1119,396 @@
 				setCryptoStatusMessage("Failed to prepare attachment download.");
 			}
 		});
-		action.append(downloadLink);
-		card.append(action);
-		return card;
+		inlineAction.appendChild(inlineDownload);
+		inlineWrap.appendChild(inlineAction);
+		return inlineWrap;
 	}
 
-	function displayChatMessage(name, text, time, encrypted, attachment) {
-		var localTimeString = new Date(Date.parse(time)||time).toLocaleString("lt");
-		var altClass="";
-		var sameNickClass = "new";
-		var encryptedClass = "enc";
-		if (!encrypted)
-			encryptedClass = "";
-		if ($('#nameInput').val() != name)
-			altClass = "alternate";
-		if (lastName == name)
-			sameNickClass = "same";
+	const card = createElement('div', 'msgAttachment');
+	card.appendChild(createElement('div', 'msgAttachmentName', file.name));
+	card.appendChild(createElement('div', 'msgAttachmentMeta', `${file.type || "application/octet-stream"} \u2022 ${formatBytes(file.size)}`));
+	const action = createElement('div', 'msgAttachmentAction');
+	const downloadLink = document.createElement('a');
+	downloadLink.href = '#';
+	downloadLink.textContent = 'Download';
+	downloadLink.addEventListener('click', (e) => {
+		e.preventDefault();
+		try {
+			downloadAttachment(file);
+		} catch (err) {
+			console.log(err);
+			setCryptoStatusMessage("Failed to prepare attachment download.");
+		}
+	});
+	action.appendChild(downloadLink);
+	card.appendChild(action);
+	return card;
+}
 
-		var messagesEl = $('#messages')[0];
-		var isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+function displayChatMessage(name, text, time, encrypted, attachment) {
+	const localTimeString = new Date(Date.parse(time) || time).toLocaleString("lt");
+	let altClass = "";
+	let sameNickClass = "new";
+	let encryptedClass = encrypted ? "enc" : "";
+	if ($nameInput.value !== name) altClass = "alternate";
+	if (lastName === name) sameNickClass = "same";
 
-		text = formatText(text);
-		var body  = $("<div class='msgBody' />").html(text);
-		if (attachment) {
-			var attachmentEl = createAttachmentElement(attachment);
-			if (attachmentEl) {
-				body.append(attachmentEl);
+	const isNearBottom = $messages.scrollHeight - $messages.scrollTop - $messages.clientHeight < 80;
+
+	text = formatText(text);
+	const body = createElement('div', 'msgBody');
+	body.innerHTML = text;
+	if (attachment) {
+		const attachmentEl = createAttachmentElement(attachment);
+		if (attachmentEl) {
+			body.appendChild(attachmentEl);
+		}
+	}
+	const timeEl = createElement('p', 'time', localTimeString);
+	body.appendChild(timeEl);
+
+	const msgDiv = createElement('div', `msg ${altClass} ${sameNickClass} ${encryptedClass}`);
+	msgDiv.prepend(createElement('div', 'nickname', name));
+	msgDiv.appendChild(body);
+
+	body.querySelectorAll('pre code').forEach((block) => {
+		hljs.highlightBlock(block);
+	});
+	$messages.appendChild(msgDiv);
+	if (isNearBottom) {
+		$messages.scrollTop = $messages.scrollHeight;
+	}
+}
+
+function openImagePreview(file) {
+	if (!file || !isImageAttachment(file)) {
+		return;
+	}
+	const dataUrl = attachmentDataUrl(file);
+	$imagePreviewImage.onload = function() {
+		const w = this.naturalWidth || this.width || 0;
+		const h = this.naturalHeight || this.height || 0;
+		$imagePreviewMeta.textContent = `${sanitizeFileName(file.name)} \u2022 ${formatBytes(file.size)} \u2022 ${w}x${h}`;
+	};
+	$imagePreviewImage.src = dataUrl;
+	$imagePreviewOverlay.style.display = 'flex';
+	$imagePreviewOverlay.setAttribute('aria-hidden', 'false');
+	imagePreviewOpen = true;
+}
+
+function closeImagePreview() {
+	imagePreviewOpen = false;
+	$imagePreviewOverlay.style.display = 'none';
+	$imagePreviewOverlay.setAttribute('aria-hidden', 'true');
+	$imagePreviewImage.src = '';
+	$imagePreviewMeta.textContent = '';
+}
+
+/* ===== FIREBASE ===== */
+function fbAttach() {
+	attachGeneration += 1;
+	const currentGeneration = attachGeneration;
+	messageRenderQueue = Promise.resolve();
+	notificationWarmupExpiresAt = Date.now() + 17000;
+	fbQuery.on('child_added', (snapshot) => {
+		if (currentGeneration !== attachGeneration) {
+			return;
+		}
+		messageRenderQueue = messageRenderQueue
+			.then(() => {
+				if (currentGeneration !== attachGeneration) {
+					return;
+				}
+				return processIncomingMessage(snapshot);
+			})
+			.catch((err) => { console.log(err); });
+	});
+}
+
+async function processIncomingMessage(snapshot) {
+	const message = snapshot.val();
+	if (!message) {
+		return;
+	}
+
+	let isEncrypted = false;
+	let displayText = message.text === undefined || message.text === null ? "" : String(message.text);
+	let displayFile = sanitizeIncomingAttachment(message.file);
+	if (message.enc) {
+		isEncrypted = true;
+		if (!password) {
+			displayText = "Encrypted message. Enable encryption to decrypt.";
+			displayFile = null;
+		} else {
+			const decryptionCandidates = [password];
+			if (passwordFallback && passwordFallback !== password) {
+				decryptionCandidates.push(passwordFallback);
+			}
+			try {
+				let decryptedTextRaw;
+				let lastError;
+				for (let i = 0; i < decryptionCandidates.length; i++) {
+					try {
+						decryptedTextRaw = await decryptTextV1(message.enc, decryptionCandidates[i]);
+						break;
+					} catch (candidateErr) {
+						lastError = candidateErr;
+					}
+				}
+				if (decryptedTextRaw === undefined) {
+					throw lastError || new Error("Decryption failed");
+				}
+				const { text, file } = parseDecryptedPayload(decryptedTextRaw);
+				displayText = text;
+				displayFile = file;
+			} catch (err) {
+				console.log(err);
+				displayText = "Decryption failed (wrong password or corrupted data)";
+				displayFile = null;
+				incrementDecryptFailure();
 			}
 		}
-		body.append($('<p class="time" />').text(localTimeString));
-		var textDiv= $('<div class="msg '+altClass+' '+sameNickClass+' '+encryptedClass+'" />').html(body);
-		textDiv = textDiv.prepend($('<div class="nickname" />').text(name));
-
-		body[0].querySelectorAll('pre code').forEach((block) => {
-			hljs.highlightBlock(block);
-		});
-		textDiv.appendTo($('#messages'));
-		if (isNearBottom) {
-			messagesEl.scrollTop = messagesEl.scrollHeight;
-		}
+	} else if (message.ct) {
+		isEncrypted = true;
+		displayText = "Legacy encrypted message format is no longer supported.";
+		displayFile = null;
 	}
 
-	function formatText(txt)
-	{
-		if (txt === null || txt === undefined) {
-			return "";
+	displayChatMessage(message.name, displayText, message._at, isEncrypted, displayFile);
+	notifyAboutUnread();
+	if (notifyEnabled && Date.now() >= notificationWarmupExpiresAt) {
+		let notifyText = displayText;
+		if (!notifyText && displayFile) {
+			notifyText = `[Attachment] ${displayFile.name}`;
 		}
-		txt = String(txt);
-		if (txt.startsWith("`")) { //pre
-			txt = txt.replace(/^`|`$/g, "");
-			txt = txt.replace(/^\s+|\s+$/g, ''); //trim start
-			return "<pre><code>"+escapeHtml(txt)+"</code></pre>";
+		if (!notifyText) {
+			notifyText = "New message";
 		}
-		txt = escapeHtml(txt);
-		var codeExp = /`(.+?)`/gi;
-		if (txt.search(codeExp) >= 0)
-		{
-			return txt.replace(codeExp, '<code class="snip">$1</code>');
-		}
-		var imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/gi;
-		var linkExp = /(\b(https?):[^ ]+)/gi;
-		txt = txt.split("\n").join("<br />");
-		if (txt.search(imgExp) >= 0)
-		{
-			return txt.replace(imgExp, '<a href="$1" target="_blank"><img src="$1" /></a>');
-		}
-		txt = txt.replace(linkExp, '<a href="$1" target="_blank">$1</a>');
-		return txt;
+		notify(message.name, notifyText);
 	}
+	lastName = message.name;
+}
 
-	function escapeHtml(txt) {
-		return txt
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&#39;");
-	}
-
-	function notify(name, txt) {
-		if (name == $('#nameInput').val())
+/* ===== MESSAGING ===== */
+async function send() {
+	const name = $nameInput.value;
+	const text = $messageInput.value;
+	const hasAttachment = !!pendingAttachment;
+	if (!text && !hasAttachment) return;
+	if (encrypt) {
+		if (!supportsModernCrypto || !password) {
+			setCryptoStatusMessage("Encryption is enabled but an active password is missing.");
 			return;
-		if (!("Notification" in window)) {
-			alert("This browser does not support desktop notification");
-		} else if (Notification.permission === "granted") {
-			new Notification(txt);
-		} else if (Notification.permission !== 'denied') {
-			Notification.requestPermission(function (permission) {
-				if (permission === "granted") {
-					new Notification(txt);
-				}
-			});
 		}
-	}
-
-	/******** UNREAD MESSAGE NOTIFICATION *********/
-	function setupVisibilityProps(){
-		if (typeof document.hidden !== "undefined") {
-		  hidden = "hidden";
-		  visibilityChange = "visibilitychange";
-		} else if (typeof document.mozHidden !== "undefined") {
-		  hidden = "mozHidden";
-		  visibilityChange = "mozvisibilitychange";
-		} else if (typeof document.msHidden !== "undefined") {
-		  hidden = "msHidden";
-		  visibilityChange = "msvisibilitychange";
-		} else if (typeof document.webkitHidden !== "undefined") {
-		  hidden = "webkitHidden";
-		  visibilityChange = "webkitvisibilitychange";
+		try {
+			const encryptedPayload = await encryptPayloadV1({ text: text, file: pendingAttachment || undefined }, password);
+			fb.push({ name: name, text: encryptedPayload.text, enc: encryptedPayload.enc, _at: new Date().toISOString() });
+		} catch (err) {
+			console.log(err);
+			setCryptoStatusMessage("Failed to encrypt message.");
+			return;
 		}
-		document.addEventListener(visibilityChange, onVisibilityChange, false);
-	}
-
-	function onVisibilityChange(){
-		if (!document[hidden]) {
-			unreadMsgCount = 0;
-			document.title = title;
+	} else {
+		const plainMessage = { name: name, text: text, _at: new Date().toISOString() };
+		if (pendingAttachment) {
+			plainMessage.file = pendingAttachment;
 		}
+		fb.push(plainMessage);
 	}
+	setCryptoStatusMessage("");
+	clearPendingAttachment();
+	$messageInput.value = '';
+	$messageInput.style.height = 'auto';
+	$messageInput.focus();
+}
 
-	function notifyAboutUnread(eventArgs) {
-		if (document[hidden]) {
-			unreadMsgCount += 1;
-			document.title = '(' + unreadMsgCount + ') ' + title;
-		}
+/* ===== NOTIFICATIONS ===== */
+function notify(name, txt) {
+	if (name === $nameInput.value) return;
+	if (!("Notification" in window)) {
+		alert("This browser does not support desktop notification");
+	} else if (Notification.permission === "granted") {
+		new Notification(txt);
+	} else if (Notification.permission !== 'denied') {
+		Notification.requestPermission((permission) => {
+			if (permission === "granted") {
+				new Notification(txt);
+			}
+		});
 	}
+}
 
-	function getParameterByName(name) {
-	  name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-	  var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-	  results = regex.exec(location.search);
-	  return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+function onVisibilityChange() {
+	if (!document.hidden) {
+		unreadMsgCount = 0;
+		document.title = title;
 	}
-    </script>
+}
 
-<div id="secureIcon" style="display:none;">&#x1F512;</div>
-</body></html>
+function notifyAboutUnread() {
+	if (document.hidden) {
+		unreadMsgCount += 1;
+		document.title = `(${unreadMsgCount}) ${title}`;
+	}
+}
+
+/* ===== EVENT HANDLERS & INIT ===== */
+document.addEventListener('DOMContentLoaded', () => {
+	$enableEncryption.checked = false;
+	$persistPass.setAttribute('title', 'Persist derived unlock secret (not raw passphrase)');
+	$nameInput.value = localStorage.getItem("nickname") || '';
+	const storedNotify = localStorage.getItem("enableNotifications");
+	if (storedNotify === null) {
+		notifyEnabled = notificationsEnabled;
+	} else {
+		notifyEnabled = storedNotify === "true";
+	}
+	$enableNotifications.checked = notifyEnabled;
+
+	fbAttach();
+	document.addEventListener('visibilitychange', onVisibilityChange, false);
+	if (hasPersistedSplitSecret()) {
+		$enableEncryption.checked = true;
+		enableEncryption();
+	}
+	renderPendingAttachment();
+});
+
+$enableNotifications.addEventListener('change', function() {
+	notifyEnabled = this.checked;
+	localStorage.setItem("enableNotifications", notifyEnabled);
+});
+
+$nameInput.addEventListener('change', function() {
+	localStorage.setItem("nickname", this.value);
+});
+
+$passwordInput.addEventListener('change', () => {
+	$enableEncryption.checked = false;
+	encrypt = false;
+	password = undefined;
+	passwordFallback = undefined;
+	$secureIcon.style.display = 'none';
+});
+
+$sendBtn.addEventListener('click', () => { send(); });
+
+$attachBtn.addEventListener('click', () => { $fileInput.click(); });
+
+$fileInput.addEventListener('change', function() {
+	handleFileSelection(this.files, false);
+	this.value = "";
+});
+
+$clearAttachment.addEventListener('click', () => { clearPendingAttachment(); });
+
+$persistPass.addEventListener('click', () => { persistDerivedSecret(); });
+
+$optionsToggle.addEventListener('click', function() {
+	const expanded = this.getAttribute('aria-expanded') === 'true';
+	if (expanded) {
+		$options.style.display = 'none';
+		this.setAttribute('aria-expanded', 'false');
+	} else {
+		$options.style.display = 'flex';
+		this.setAttribute('aria-expanded', 'true');
+	}
+});
+
+$optionsToggle.addEventListener('keydown', function(e) {
+	if (e.key === 'Enter' || e.key === ' ') {
+		e.preventDefault();
+		this.click();
+	}
+});
+
+$enableEncryption.addEventListener('change', function() {
+	if (this.checked) {
+		enableEncryption();
+	} else {
+		encrypt = false;
+		password = undefined;
+		passwordFallback = undefined;
+		$secureIcon.style.display = 'none';
+	}
+});
+
+$messageInput.addEventListener('keydown', (e) => {
+	if (e.key === 'Enter' && e.ctrlKey) {
+		$messageInput.value += "\n";
+		e.preventDefault();
+	} else if (e.key === 'Enter' && !e.ctrlKey) {
+		e.preventDefault();
+		send();
+	}
+});
+
+$messageInput.addEventListener('input', function() {
+	this.style.height = 'auto';
+	this.style.height = this.scrollHeight + 'px';
+});
+
+$msgInput.addEventListener('dragenter', (e) => {
+	if (!hasDraggedFiles(e)) return;
+	e.preventDefault();
+	e.stopPropagation();
+	dragDepth += 1;
+	$msgInput.classList.add('drag-over');
+});
+
+$msgInput.addEventListener('dragover', (e) => {
+	if (!hasDraggedFiles(e)) return;
+	e.preventDefault();
+	e.stopPropagation();
+});
+
+$msgInput.addEventListener('dragleave', (e) => {
+	if (!hasDraggedFiles(e)) return;
+	e.preventDefault();
+	e.stopPropagation();
+	dragDepth = Math.max(0, dragDepth - 1);
+	if (dragDepth === 0) {
+		$msgInput.classList.remove('drag-over');
+	}
+});
+
+$msgInput.addEventListener('drop', (e) => {
+	if (!hasDraggedFiles(e)) return;
+	e.preventDefault();
+	e.stopPropagation();
+	dragDepth = 0;
+	$msgInput.classList.remove('drag-over');
+	const files = e.dataTransfer ? e.dataTransfer.files : null;
+	handleFileSelection(files, true);
+});
+
+document.addEventListener('dragover', (e) => {
+	if (!hasDraggedFiles(e)) return;
+	e.preventDefault();
+});
+
+document.addEventListener('drop', (e) => {
+	if (!hasDraggedFiles(e)) return;
+	e.preventDefault();
+});
+
+document.addEventListener('paste', (e) => { handlePasteAttachment(e); });
+
+$imagePreviewClose.addEventListener('click', () => { closeImagePreview(); });
+
+$imagePreviewOverlay.addEventListener('click', (e) => {
+	if (e.target && e.target.id === 'imagePreviewOverlay') {
+		closeImagePreview();
+	}
+});
+
+document.addEventListener('keydown', (e) => {
+	if (e.key === 'Escape' && imagePreviewOpen) {
+		closeImagePreview();
+	}
+});
+
+})();
+		</script>
+	</body>
+</html>
