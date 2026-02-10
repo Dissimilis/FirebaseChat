@@ -5,144 +5,398 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js" integrity="sha384-zAlH3FrzsxdG1VfzWcyO9+PqCx5mQkLQPjgtp7jukmrbywGDj5nCivAb4j9ddOFu" crossorigin="anonymous"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.js" integrity="sha256-DrT5NfxfbHvMHux31Lkhxg42LY6of8TaYyK50jnxRnM=" crossorigin="anonymous"></script>
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous" />
-		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha256-8uHMIn1ru0GS5KO+zf7Zccf8Uw12IA5DrdEcmMuWLFM=" crossorigin="anonymous" />
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.2/styles/tomorrow-night.min.css" integrity="sha256-j9z54bBKr1YuuulDV9S89E6WbTjElOrGGWyJy3N0xS8=" crossorigin="anonymous" />
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.0.2/highlight.min.js" integrity="sha256-xBWd+VDTBasaTja2bfaCX4aA2H18UxRsjRFkK3rgfkI=" crossorigin="anonymous"></script>
 		<style>
-		/*@import "https://fonts.googleapis.com/css?family=Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400";*/
-			body { 
-				background: black;
-				font-family: Arial,sans-serif;
-				font-weight: normal;
-				font-size: 1.6em;
-				line-height: 1.6;
-				margin-bottom: 0.75em;
-				text-rendering: optimizelegibility;
-			 }
-			.container-fluid {
-				padding-right: 0px;
-				padding-left: 0px;
-				margin-right: auto;
-				margin-left: auto;
+			:root {
+				--bg-primary: #0d1117;
+				--bg-message: #161b22;
+				--bg-message-alt: #1c2128;
+				--text-primary: #e6edf3;
+				--text-secondary: #8b949e;
+				--text-nick: #58a6ff;
+				--text-time: #8b949e;
+				--accent: #3fb950;
+				--border: #30363d;
+				--input-bg: #21262d;
 			}
-			#secureIcon	{
-				position:fixed;
-				top: 5px;
-				right: 25px;		
-			}
-			.row {
-				color: gray;
-				width: 95%;
-				margin: auto;
-				background: #303030;				
-			}
-			#inputs-container {
-				position: fixed;
-				bottom: 0px;
-				width: 100%;
-				background: black;
-				overflow: hidden;
-				min-height: 100px;
-			}
-			#inputs { padding: 0.4em; }
-			#messages {
-				position: fixed;
-				top: 0px;
-				width: 100%;
+			*, *::before, *::after { box-sizing: border-box; }
+			html, body {
 				height: 100%;
-				overflow: auto; 
-				padding-bottom:132px;
+				margin: 0;
+				padding: 0;
+				background: var(--bg-primary);
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+				font-size: 1rem;
+				line-height: 1.5;
+				color: var(--text-primary);
 			}
-			.msg pre { margin-top:5px; padding:0; }
-			.msg.row.same {	border-radius: 0; }
-			.msg.row.alternate { background: #121212; }
-			.msg.row.alternate.same { border-radius: 0; }
-			.msg { padding-left: 0.2em;	}
-			.msg.new { margin-top: 0.2em; }
-			.msg.enc { border-right: 1px solid green; }
-			.msg.new .nickname {
-				width: auto;
-				float: right;
+			.app {
+				display: flex;
+				flex-direction: column;
+				height: 100dvh;
 			}
-			.msg.same .nickname { display:none; }
-			.msg .nickname { display: inline-block; }
-			.msg .msgBody {
-				color: #e6e1dc;
-				padding-left: 0.2em;
-				display: inline-block;
+			#messages {
+				flex: 1;
+				overflow-y: auto;
+				scroll-behavior: smooth;
+				padding: 0.5rem;
 			}
-			.msg code.snip
-			{
-				background:#969696;
-				color:#126528;			
+			#messages[aria-live] { /* specificity bump for aria attribute */ }
+			#inputs-container {
+				flex-shrink: 0;
+				background: var(--bg-primary);
+				border-top: 1px solid var(--border);
+				padding: 0.5rem;
 			}
-			.msg .msgBody img
-			{
-				max-height:300px;
-				width:auto;
-				border: 1px solid black;	
-				margin: 5px;				
+			#inputs { display: flex; flex-direction: column; gap: 0.4rem; }
+			#options {
+				display: none;
+				flex-direction: column;
+				gap: 0.4rem;
+				padding-bottom: 0.4rem;
 			}
-			.msg .time {
-				color:#637763;
-				font-size: 10px;
-				margin:0;
+			#options label {
+				color: var(--text-secondary);
+				cursor: pointer;
+				user-select: none;
 			}
-			.col-md-1 { width: auto; }
-			img {
-				padding: 0 0 0 0;
-				max-width: 100%;
-				max-height: 100%;
+			#options input[type="text"],
+			#options input[type="password"] {
+				width: 100%;
 			}
-			@-moz-document url-prefix() {
-			img { width: 100%; height: 100%; }
+			#notificationsConfig {
+				display: flex;
+				flex-direction: column;
+				gap: 0.4rem;
 			}
-			input, button, select, textarea {
-				border-radius: 0.2em;
-				background: #cdc7c7;
+			#notificationsConfig .option-row {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
 			}
-			button { margin-top: 0.2em; }
-			#inputs input { margin-bottom: 0.4em; }
-			#inputs textarea { min-width: 10em; width: 100%; height:82px; }
-			#messages .alternate .msgBody { background: #121212; }
-			#options span { color:gray;}
 			#cryptoStatus {
 				display: none;
 				color: #f0b35a;
-				margin-bottom: 0.4em;
-				font-size: 0.8em;
+				font-size: 0.85rem;
 			}
-			#optionsToggle {right: 15px; position:fixed; color:white; cursor: pointer;}
-			#send { font-size:10px;margin:0; border:0; line-height:12px; }
-			hr { margin: 3px; }
+			#msgInput {
+				display: flex;
+				gap: 0.4rem;
+				align-items: flex-end;
+			}
+			#msgInput.drag-over #messageInput {
+				border-color: var(--accent);
+				box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+			}
+			#pendingAttachment {
+				display: none;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.4rem;
+				padding: 0.35rem 0.5rem;
+				border: 1px solid var(--border);
+				border-radius: 0.375rem;
+				background: var(--input-bg);
+				color: var(--text-secondary);
+				font-size: 0.85rem;
+			}
+			#pendingAttachmentName {
+				min-width: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			#clearAttachment {
+				padding: 0.2rem 0.45rem;
+				font-size: 0.8rem;
+			}
+			#optionsToggle {
+				color: var(--text-secondary);
+				cursor: pointer;
+				font-size: 1.2rem;
+				padding: 0.3rem 0.5rem;
+				border-radius: 0.25rem;
+				user-select: none;
+				line-height: 1;
+			}
+			#optionsToggle:hover, #optionsToggle:focus-visible {
+				color: var(--text-primary);
+				background: var(--input-bg);
+				outline: none;
+			}
+			#messageInput {
+				flex: 1;
+				min-height: 2.5rem;
+				max-height: 8rem;
+				resize: none;
+				padding: 0.4rem 0.6rem;
+				font-size: 0.95rem;
+				line-height: 1.4;
+				background: var(--input-bg);
+				color: var(--text-primary);
+				border: 1px solid var(--border);
+				border-radius: 0.375rem;
+				font-family: inherit;
+			}
+			#messageInput:focus {
+				outline: none;
+				border-color: var(--text-nick);
+			}
+			input[type="text"], input[type="password"] {
+				background: var(--input-bg);
+				color: var(--text-primary);
+				border: 1px solid var(--border);
+				border-radius: 0.375rem;
+				padding: 0.35rem 0.6rem;
+				font-size: 0.9rem;
+				font-family: inherit;
+			}
+			input[type="text"]:focus, input[type="password"]:focus {
+				outline: none;
+				border-color: var(--text-nick);
+			}
+			input[type="checkbox"] {
+				accent-color: var(--accent);
+			}
+			button {
+				background: var(--input-bg);
+				color: var(--text-primary);
+				border: 1px solid var(--border);
+				border-radius: 0.375rem;
+				padding: 0.4rem 0.8rem;
+				font-size: 0.9rem;
+				cursor: pointer;
+				font-family: inherit;
+			}
+			button:hover {
+				background: var(--border);
+			}
+			#send {
+				padding: 0.4rem 1rem;
+				font-size: 0.9rem;
+				line-height: 1.4;
+				white-space: nowrap;
+			}
+			#attach {
+				padding: 0.4rem 0.8rem;
+				white-space: nowrap;
+			}
+			/* Messages */
+			.msg {
+				display: flex;
+				gap: 0.5rem;
+				padding: 0.15rem 0.4rem;
+				background: var(--bg-message);
+			}
+			.msg.alternate {
+				background: var(--bg-message-alt);
+			}
+			.msg.new { margin-top: 0.25rem; }
+			.msg.same { border-radius: 0; }
+			.msg.enc {
+				border-left: 2px solid var(--accent);
+				background: color-mix(in srgb, var(--accent) 4%, var(--bg-message));
+			}
+			.msg.enc.alternate {
+				background: color-mix(in srgb, var(--accent) 4%, var(--bg-message-alt));
+			}
+			.nickname {
+				flex-shrink: 0;
+				min-width: 4rem;
+				color: var(--text-nick);
+				text-align: right;
+				font-weight: 600;
+				font-size: 0.9rem;
+			}
+			.msg.same .nickname { visibility: hidden; }
+			.msg.new .nickname { display: inline-block; }
+			.msgBody {
+				flex: 1;
+				min-width: 0;
+				color: var(--text-primary);
+				word-wrap: break-word;
+				overflow-wrap: break-word;
+			}
+			.msgBody img {
+				max-height: 300px;
+				width: auto;
+				border: 1px solid var(--border);
+				border-radius: 0.25rem;
+				margin: 0.25rem 0;
+			}
+			.msg .time {
+				color: var(--text-time);
+				font-size: 0.7rem;
+				margin: 0;
+			}
+			.msg pre { margin-top: 0.3rem; padding: 0; }
+			.msg code.snip {
+				background: #30363d;
+				color: #e6edf3;
+				padding: 0.1rem 0.3rem;
+				border-radius: 0.2rem;
+				font-size: 0.9em;
+			}
+			.msgAttachment {
+				display: flex;
+				flex-direction: column;
+				gap: 0.3rem;
+				margin-top: 0.35rem;
+				padding: 0.4rem 0.5rem;
+				border: 1px solid var(--border);
+				border-radius: 0.35rem;
+				background: color-mix(in srgb, var(--bg-message-alt) 92%, black 8%);
+			}
+			.msgAttachmentName {
+				font-size: 0.9rem;
+				font-weight: 600;
+				color: var(--text-primary);
+				word-break: break-word;
+			}
+			.msgAttachmentMeta {
+				font-size: 0.75rem;
+				color: var(--text-secondary);
+				word-break: break-word;
+			}
+			.msgAttachmentAction {
+				font-size: 0.8rem;
+			}
+			.msgAttachmentAction a {
+				color: var(--text-nick);
+				text-decoration: none;
+			}
+			.msgAttachmentAction a:hover {
+				text-decoration: underline;
+			}
+			.msgInlineAttachment {
+				margin-top: 0.35rem;
+				display: flex;
+				flex-direction: column;
+				gap: 0.25rem;
+			}
+			.msgInlineAttachment .msgAttachmentThumb img {
+				max-width: 240px;
+				max-height: 180px;
+			}
+			.msgAttachmentThumbWrap {
+				margin-top: 0.2rem;
+			}
+			.msgAttachmentThumb {
+				display: inline-block;
+				padding: 0;
+				background: transparent;
+				border: 0;
+				cursor: zoom-in;
+			}
+			.msgAttachmentThumb img {
+				display: block;
+				max-width: 180px;
+				max-height: 120px;
+				width: auto;
+				height: auto;
+				border: 1px solid var(--border);
+				border-radius: 0.25rem;
+			}
+			#imagePreviewOverlay {
+				position: fixed;
+				inset: 0;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				background: rgba(0, 0, 0, 0.82);
+				z-index: 1200;
+				padding: 1rem;
+			}
+			#imagePreviewDialog {
+				position: relative;
+				max-width: 96vw;
+				max-height: 92vh;
+				overflow: auto;
+				background: #0b0f14;
+				border: 1px solid var(--border);
+				border-radius: 0.4rem;
+				padding: 0.5rem;
+			}
+			#imagePreviewImage {
+				display: block;
+				max-width: none;
+				max-height: none;
+				width: auto;
+				height: auto;
+			}
+			#imagePreviewMeta {
+				margin-top: 0.45rem;
+				color: var(--text-secondary);
+				font-size: 0.8rem;
+			}
+			#imagePreviewClose {
+				position: absolute;
+				top: 0.3rem;
+				right: 0.3rem;
+				padding: 0.2rem 0.45rem;
+				font-size: 0.85rem;
+				line-height: 1;
+			}
+			img {
+				max-width: 100%;
+				max-height: 100%;
+			}
+			#secureIcon {
+				position: fixed;
+				top: 0.4rem;
+				right: 0.8rem;
+				font-size: 1.5rem;
+				display: none;
+			}
+			hr { margin: 0.2rem; border-color: var(--border); }
+			/* Scrollbar */
+			#messages::-webkit-scrollbar { width: 8px; }
+			#messages::-webkit-scrollbar-track { background: var(--bg-primary); }
+			#messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 		</style>
 		<title>Chat</title>
 	</head>
   <body>
-    <div class="container-fluid">	
-    <div id="messages"></div>
+    <div class="app">
+    <div id="messages" aria-live="polite"></div>
 	<div id="inputs-container">
-	<div id="inputs">		
-	<div id="options" style="display: none">	
-		<input value="" id="nameInput" placeholder="Name" type="text">
-		<span id="notificationsConfig">
-		<input value="" type="password" id="passwordInput" placeholder="Encryption password">	
-		<button id="persistPass" title="Persist encryption key to survive refresh">#</button>
-		<input type="checkbox" id="enableEncryption"> <label> Enable encryption </label>
-		<input type="checkbox" id="enableNotifications"> <label> Enable notifications </label>
-		</span>
+	<div id="inputs">
+	<div id="options">
+		<input value="" id="nameInput" placeholder="Name" type="text" aria-label="Nickname">
+		<div id="notificationsConfig">
+		<input value="" type="password" id="passwordInput" placeholder="Encryption password" aria-label="Encryption password">
+		<button id="persistPass" title="Persist derived unlock secret to survive refresh">Save key</button>
+		<div class="option-row">
+			<input type="checkbox" id="enableEncryption"> <label for="enableEncryption">Enable encryption</label>
+		</div>
+		<div class="option-row">
+			<input type="checkbox" id="enableNotifications"> <label for="enableNotifications">Enable notifications</label>
+		</div>
+		</div>
 		<div id="cryptoStatus"></div>
 	</div>
-	<div id = "msgInput">
-		<div id="optionsToggle" title="Toggle options">🔨</div>
-		<textarea id="messageInput" placeholder="Message" type="text"></textarea>
+	<div id="msgInput">
+		<div id="optionsToggle" role="button" tabindex="0" aria-expanded="false" aria-controls="options" title="Toggle options">&#x2699;</div>
+		<textarea id="messageInput" placeholder="Message" rows="1"></textarea>
+		<button id="attach" type="button">Attach</button>
 		<button id="send">Send</button>
 	</div>
+	<input id="fileInput" type="file" style="display:none;" />
+	<div id="pendingAttachment">
+		<span id="pendingAttachmentName"></span>
+		<button id="clearAttachment" type="button">Clear</button>
 	</div>
 	</div>
-	
+	</div>
+
+	</div>
+	<div id="imagePreviewOverlay" aria-hidden="true">
+		<div id="imagePreviewDialog" role="dialog" aria-modal="true" aria-label="Image preview">
+			<button id="imagePreviewClose" type="button" aria-label="Close image preview">X</button>
+			<img id="imagePreviewImage" alt="Attachment preview" />
+			<div id="imagePreviewMeta"></div>
+		</div>
 	</div>
 	<script>
 	/* ---------------------- CONFIGURATION ------------------------*/
@@ -158,9 +412,13 @@
 	var persistTransformIterations = 120000;
 	var encSaltLengthBytes = 16;
 	var encIvLengthBytes = 12;
+	var maxAttachmentBytes = 200 * 1024;
+	var maxAttachmentBase64Length = Math.ceil((maxAttachmentBytes * 4) / 3) + 8;
+	var maxAttachmentCount = 1;
+	var pastedJpegQuality = 0.77;
 
 	/* ------------------ END OF CONFIGURATION ---------------------*/
-	
+
 	var fb = new Firebase(databaseUrl);
 	var fbQuery = fb.endAt().limitToLast(messagesLimit);
 	var lastName = "";
@@ -173,6 +431,9 @@
 	var cryptoStatusMessage = "";
 	var messageRenderQueue = Promise.resolve();
 	var attachGeneration = 0;
+	var pendingAttachment = null;
+	var dragDepth = 0;
+	var imagePreviewOpen = false;
 
 	/******** UNREAD MESSAGE NOTIFICATION *********/
 	var unreadMsgCount = 0;
@@ -203,6 +464,7 @@
 			$("#enableEncryption").prop('checked', true);
 			enableEncryption();
 		}
+		renderPendingAttachment();
 	});
 	$('#enableNotifications').change(function(){
 		notifyEnabled = $(this).prop('checked');
@@ -217,11 +479,35 @@
 		$("#secureIcon").hide(1000);
 	});
 	$('#send').click(function(){send();});
+	$('#attach').click(function(){
+		$('#fileInput').click();
+	});
+	$('#fileInput').change(function() {
+		handleFileSelection(this.files, false);
+		this.value = "";
+	});
+	$('#clearAttachment').click(function() {
+		clearPendingAttachment();
+	});
 	$('#persistPass').click(function(){
 		persistDerivedSecret();
 	});
 	$("#optionsToggle").click(function() {
-		$("#options").toggle("fast");
+		var opts = $("#options");
+		var expanded = $(this).attr('aria-expanded') === 'true';
+		if (expanded) {
+			opts.hide("fast");
+			$(this).attr('aria-expanded', 'false');
+		} else {
+			opts.css('display', 'flex').hide().show("fast");
+			$(this).attr('aria-expanded', 'true');
+		}
+	});
+	$("#optionsToggle").on('keydown', function(e) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			$(this).click();
+		}
 	});
 	$("#enableEncryption").change(function() {
 		if(this.checked) {
@@ -246,6 +532,398 @@
 			return false;
 		}
 	});
+	$('#messageInput').on('input', function() {
+		this.style.height = 'auto';
+		this.style.height = this.scrollHeight + 'px';
+	});
+	$('#messageInput').on('paste', function(e) {
+		handlePasteAttachment(e);
+	});
+	$("#msgInput").on('dragenter', function(e) {
+		if (!hasDraggedFiles(e)) {
+			return;
+		}
+		e.preventDefault();
+		e.stopPropagation();
+		dragDepth += 1;
+		$("#msgInput").addClass("drag-over");
+	});
+	$("#msgInput").on('dragover', function(e) {
+		if (!hasDraggedFiles(e)) {
+			return;
+		}
+		e.preventDefault();
+		e.stopPropagation();
+	});
+	$("#msgInput").on('dragleave', function(e) {
+		if (!hasDraggedFiles(e)) {
+			return;
+		}
+		e.preventDefault();
+		e.stopPropagation();
+		dragDepth = Math.max(0, dragDepth - 1);
+		if (dragDepth === 0) {
+			$("#msgInput").removeClass("drag-over");
+		}
+	});
+	$("#msgInput").on('drop', function(e) {
+		if (!hasDraggedFiles(e)) {
+			return;
+		}
+		e.preventDefault();
+		e.stopPropagation();
+		dragDepth = 0;
+		$("#msgInput").removeClass("drag-over");
+		var files = e.originalEvent && e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
+		handleFileSelection(files, true);
+	});
+	$(document).on('dragover drop', function(e) {
+		if (!hasDraggedFiles(e)) {
+			return;
+		}
+		e.preventDefault();
+	});
+	$('#imagePreviewClose').on('click', function() {
+		closeImagePreview();
+	});
+	$('#imagePreviewOverlay').on('click', function(e) {
+		if (e.target && e.target.id === 'imagePreviewOverlay') {
+			closeImagePreview();
+		}
+	});
+	$(document).on('keydown', function(e) {
+		if (e.key === 'Escape' && imagePreviewOpen) {
+			closeImagePreview();
+		}
+	});
+
+	function hasDraggedFiles(e)
+	{
+		var dt = e.originalEvent ? e.originalEvent.dataTransfer : null;
+		if (!dt) {
+			return false;
+		}
+		if (dt.types && dt.types.length) {
+			for (var i = 0; i < dt.types.length; i++) {
+				if (dt.types[i] === 'Files') {
+					return true;
+				}
+			}
+		}
+		return !!(dt.files && dt.files.length);
+	}
+
+	function formatBytes(bytes)
+	{
+		if (bytes < 1024) return bytes + " B";
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+		return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+	}
+
+	function isImageAttachment(file)
+	{
+		return !!(file && typeof file.type === "string" && /^image\//i.test(file.type));
+	}
+
+	function base64ByteLength(base64)
+	{
+		if (!base64) {
+			return 0;
+		}
+		var len = base64.length;
+		var padding = 0;
+		if (len >= 2) {
+			if (base64.charAt(len - 1) === '=') padding += 1;
+			if (base64.charAt(len - 2) === '=') padding += 1;
+		}
+		return Math.floor((len * 3) / 4) - padding;
+	}
+
+	function getPastedImageName()
+	{
+		var now = new Date();
+		var stamp = now.getFullYear().toString()
+			+ String(now.getMonth() + 1).padStart(2, '0')
+			+ String(now.getDate()).padStart(2, '0')
+			+ "-"
+			+ String(now.getHours()).padStart(2, '0')
+			+ String(now.getMinutes()).padStart(2, '0')
+			+ String(now.getSeconds()).padStart(2, '0');
+		return "pasted-image-" + stamp + ".jpg";
+	}
+
+	function fileToDataUrl(file)
+	{
+		return new Promise(function(resolve, reject) {
+			var reader = new FileReader();
+			reader.onload = function() { resolve(reader.result); };
+			reader.onerror = function() { reject(reader.error || new Error("Failed to read file as data URL")); };
+			reader.readAsDataURL(file);
+		});
+	}
+
+	function loadImageFromDataUrl(dataUrl)
+	{
+		return new Promise(function(resolve, reject) {
+			var img = new Image();
+			img.onload = function() { resolve(img); };
+			img.onerror = function() { reject(new Error("Failed to load pasted image")); };
+			img.src = dataUrl;
+		});
+	}
+
+	async function recompressPastedImageToJpeg(file)
+	{
+		var dataUrl = await fileToDataUrl(file);
+		var img = await loadImageFromDataUrl(dataUrl);
+		var width = img.naturalWidth || img.width;
+		var height = img.naturalHeight || img.height;
+		if (!width || !height) {
+			throw new Error("Invalid pasted image dimensions");
+		}
+		var canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		var ctx = canvas.getContext('2d', { alpha: false });
+		if (!ctx) {
+			throw new Error("Canvas context unavailable");
+		}
+		ctx.fillStyle = '#ffffff';
+		ctx.fillRect(0, 0, width, height);
+		ctx.drawImage(img, 0, 0, width, height);
+		var jpegDataUrl = canvas.toDataURL('image/jpeg', pastedJpegQuality);
+		var idx = jpegDataUrl.indexOf(',');
+		var base64 = idx >= 0 ? jpegDataUrl.substring(idx + 1) : "";
+		if (!base64) {
+			throw new Error("JPEG recompression failed");
+		}
+		return {
+			name: getPastedImageName(),
+			type: "image/jpeg",
+			size: base64ByteLength(base64),
+			data: base64
+		};
+	}
+
+	function renderPendingAttachment()
+	{
+		if (!pendingAttachment) {
+			$("#pendingAttachmentName").text("");
+			$("#pendingAttachment").hide();
+			return;
+		}
+		$("#pendingAttachmentName").text("Attached: " + pendingAttachment.name + " (" + formatBytes(pendingAttachment.size) + ")");
+		$("#pendingAttachment").css("display", "flex");
+	}
+
+	function clearPendingAttachment()
+	{
+		pendingAttachment = null;
+		renderPendingAttachment();
+	}
+
+	function sanitizeFileName(name)
+	{
+		var cleaned = (name || "").trim();
+		if (!cleaned) {
+			return "attachment.bin";
+		}
+		return cleaned;
+	}
+
+	function readFileAsAttachment(file)
+	{
+		return new Promise(function(resolve, reject) {
+			var reader = new FileReader();
+			reader.onload = function() {
+				try {
+					var bytes = new Uint8Array(reader.result);
+					resolve({
+						name: sanitizeFileName(file.name),
+						type: file.type || "application/octet-stream",
+						size: bytes.length,
+						data: toBase64(bytes)
+					});
+				} catch (err) {
+					reject(err);
+				}
+			};
+			reader.onerror = function() {
+				reject(reader.error || new Error("File read failed"));
+			};
+			reader.readAsArrayBuffer(file);
+		});
+	}
+
+	async function handlePasteAttachment(e)
+	{
+		var originalEvent = e.originalEvent;
+		if (!originalEvent || !originalEvent.clipboardData || !originalEvent.clipboardData.items) {
+			return;
+		}
+		var items = originalEvent.clipboardData.items;
+		var imageFile = null;
+		for (var i = 0; i < items.length; i++) {
+			var item = items[i];
+			if (item && item.kind === "file" && item.type && item.type.indexOf("image/") === 0) {
+				imageFile = item.getAsFile();
+				break;
+			}
+		}
+		if (!imageFile) {
+			return;
+		}
+		e.preventDefault();
+		try {
+			var jpegAttachment = await recompressPastedImageToJpeg(imageFile);
+			if (jpegAttachment.size > maxAttachmentBytes) {
+				setCryptoStatusMessage("Pasted image exceeds max size after JPEG compression (" + formatBytes(maxAttachmentBytes) + ").");
+				return;
+			}
+			pendingAttachment = jpegAttachment;
+			renderPendingAttachment();
+			setCryptoStatusMessage("Image pasted and attached (JPEG quality " + Math.round(pastedJpegQuality * 100) + "%).");
+		} catch (err) {
+			console.log(err);
+			setCryptoStatusMessage("Failed to process pasted image.");
+		}
+	}
+
+	async function handleFileSelection(files, fromDrop)
+	{
+		if (!files || !files.length) {
+			return;
+		}
+		if (files.length > maxAttachmentCount) {
+			setCryptoStatusMessage("Only one attachment per message is supported.");
+			return;
+		}
+		var file = files[0];
+		if (!file) {
+			return;
+		}
+		if (file.size > maxAttachmentBytes) {
+			setCryptoStatusMessage("Attachment exceeds max size (" + formatBytes(maxAttachmentBytes) + ").");
+			return;
+		}
+		try {
+			pendingAttachment = await readFileAsAttachment(file);
+			renderPendingAttachment();
+			if (fromDrop) {
+				setCryptoStatusMessage("Attachment ready.");
+			} else {
+				setCryptoStatusMessage("");
+			}
+		} catch (err) {
+			console.log(err);
+			setCryptoStatusMessage("Failed to read attachment.");
+		}
+	}
+
+	function sanitizeIncomingAttachment(file)
+	{
+		if (!file || typeof file !== "object") {
+			return null;
+		}
+		var data = typeof file.data === "string" ? file.data : "";
+		var size = Number(file.size);
+		if (!data || !isFinite(size) || size <= 0 || size > maxAttachmentBytes) {
+			return null;
+		}
+		if (data.length > maxAttachmentBase64Length) {
+			return null;
+		}
+		if (!/^[A-Za-z0-9+/=]+$/.test(data)) {
+			return null;
+		}
+		var decodedBytes = base64ByteLength(data);
+		if (decodedBytes <= 0 || decodedBytes > maxAttachmentBytes || Math.abs(decodedBytes - size) > 4) {
+			return null;
+		}
+		return {
+			name: sanitizeFileName(file.name),
+			type: (typeof file.type === "string" && file.type) ? file.type : "application/octet-stream",
+			size: Math.floor(size),
+			data: data
+		};
+	}
+
+	function parseDecryptedPayload(decryptedText)
+	{
+		if (decryptedText === null || decryptedText === undefined) {
+			return { text: "", file: null };
+		}
+		try {
+			var parsed = JSON.parse(decryptedText);
+			if (parsed && typeof parsed === "object" && (Object.prototype.hasOwnProperty.call(parsed, "text") || Object.prototype.hasOwnProperty.call(parsed, "file"))) {
+				return {
+					text: parsed.text === undefined || parsed.text === null ? "" : String(parsed.text),
+					file: sanitizeIncomingAttachment(parsed.file)
+				};
+			}
+		} catch (err) {
+			// Keep compatibility with old encrypted text-only payloads.
+		}
+		return { text: String(decryptedText), file: null };
+	}
+
+	function safeMimeType(mime)
+	{
+		if (typeof mime !== "string") {
+			return "application/octet-stream";
+		}
+		var trimmed = mime.trim().toLowerCase();
+		if (/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(trimmed)) {
+			return trimmed;
+		}
+		return "application/octet-stream";
+	}
+
+	function attachmentDataUrl(file)
+	{
+		return "data:" + safeMimeType(file.type) + ";base64," + file.data;
+	}
+
+	function downloadAttachment(file)
+	{
+		var bytes = fromBase64(file.data);
+		var blob = new Blob([bytes], { type: safeMimeType(file.type) });
+		var url = URL.createObjectURL(blob);
+		var anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = sanitizeFileName(file.name);
+		anchor.rel = 'noopener';
+		document.body.appendChild(anchor);
+		anchor.click();
+		document.body.removeChild(anchor);
+		setTimeout(function() { URL.revokeObjectURL(url); }, 1500);
+	}
+
+	function closeImagePreview()
+	{
+		imagePreviewOpen = false;
+		$("#imagePreviewOverlay").hide().attr("aria-hidden", "true");
+		$("#imagePreviewImage").attr("src", "");
+		$("#imagePreviewMeta").text("");
+	}
+
+	function openImagePreview(file)
+	{
+		if (!file || !isImageAttachment(file)) {
+			return;
+		}
+		var dataUrl = attachmentDataUrl(file);
+		var imgEl = $("#imagePreviewImage");
+		imgEl.off('load').on('load', function() {
+			var w = this.naturalWidth || this.width || 0;
+			var h = this.naturalHeight || this.height || 0;
+			var meta = sanitizeFileName(file.name) + " • " + formatBytes(file.size) + " • " + w + "x" + h;
+			$("#imagePreviewMeta").text(meta);
+		});
+		imgEl.attr("src", dataUrl);
+		$("#imagePreviewOverlay").css("display", "flex").attr("aria-hidden", "false");
+		imagePreviewOpen = true;
+	}
 
 	function renderCryptoStatus()
 	{
@@ -473,8 +1151,9 @@
 		}
 	}
 
-	async function encryptTextV1(plainText, passphrase)
+	async function encryptPayloadV1(payload, passphrase)
 	{
+		var plainText = JSON.stringify(payload);
 		var salt = randomBytes(encSaltLengthBytes);
 		var iv = randomBytes(encIvLengthBytes);
 		var key = await deriveAesKey(passphrase, salt, pbkdf2Iterations);
@@ -526,47 +1205,61 @@
 		}
 
 		var isEncrypted = false;
+		var displayText = message.text === undefined || message.text === null ? "" : String(message.text);
+		var displayFile = sanitizeIncomingAttachment(message.file);
 		if (message.enc) {
 			isEncrypted = true;
 			if (!password) {
-				message.text = "Encrypted message. Enable encryption to decrypt.";
+				displayText = "Encrypted message. Enable encryption to decrypt.";
+				displayFile = null;
 			} else {
 				var decryptionCandidates = [password];
 				if (passwordFallback && passwordFallback !== password) {
 					decryptionCandidates.push(passwordFallback);
 				}
 				try {
-					var decryptedText;
+					var decryptedTextRaw;
 					var lastError;
 					for (var i = 0; i < decryptionCandidates.length; i++) {
 						try {
-							decryptedText = await decryptTextV1(message.enc, decryptionCandidates[i]);
+							decryptedTextRaw = await decryptTextV1(message.enc, decryptionCandidates[i]);
 							break;
 						} catch (candidateErr) {
 							lastError = candidateErr;
 						}
 					}
-					if (decryptedText === undefined) {
+					if (decryptedTextRaw === undefined) {
 						throw lastError || new Error("Decryption failed");
 					}
-					message.text = decryptedText;
+					var decryptedPayload = parseDecryptedPayload(decryptedTextRaw);
+					displayText = decryptedPayload.text;
+					displayFile = decryptedPayload.file;
 				} catch (err) {
 					console.log(err);
-					message.text = "Decryption failed (wrong password or corrupted data)";
+					displayText = "Decryption failed (wrong password or corrupted data)";
+					displayFile = null;
 					incrementDecryptFailure();
 				}
 			}
 		} else if (message.ct) {
 			isEncrypted = true;
-			message.text = "Legacy encrypted message format is no longer supported.";
+			displayText = "Legacy encrypted message format is no longer supported.";
+			displayFile = null;
 		}
 
-		displayChatMessage(message.name, message.text, message._at, isEncrypted);
+		displayChatMessage(message.name, displayText, message._at, isEncrypted, displayFile);
 		/******** UNREAD MESSAGE NOTIFICATION *********/
 		notifyAboutUnread(snapshot);
 		/**********************************************/
 		if (notifyEnabled && Date.now() >= notificationWarmupExpiresAt) {
-			notify(message.name, message.text);
+			var notifyText = displayText;
+			if (!notifyText && displayFile) {
+				notifyText = "[Attachment] " + displayFile.name;
+			}
+			if (!notifyText) {
+				notifyText = "New message";
+			}
+			notify(message.name, notifyText);
 		}
 		lastName = message.name;
 	}
@@ -596,7 +1289,8 @@
 	{
 		var name = $('#nameInput').val();
 		var text = $('#messageInput').val();
-		if (!text)
+		var hasAttachment = !!pendingAttachment;
+		if (!text && !hasAttachment)
 			return;
 		if (encrypt)
 		{
@@ -605,7 +1299,7 @@
 				return;
 			}
 			try {
-				var encryptedPayload = await encryptTextV1(text, password);
+				var encryptedPayload = await encryptPayloadV1({ text: text, file: pendingAttachment || undefined }, password);
 				fb.push({name: name, text: encryptedPayload.text, enc: encryptedPayload.enc, _at: new Date().toISOString()});
 			} catch (err) {
 				console.log(err);
@@ -615,11 +1309,80 @@
 		}
 		else
 		{
-			fb.push({name : name, text : text, _at: new Date().toISOString()});
+			var plainMessage = {name : name, text : text, _at: new Date().toISOString()};
+			if (pendingAttachment) {
+				plainMessage.file = pendingAttachment;
+			}
+			fb.push(plainMessage);
 		}
+		setCryptoStatusMessage("");
+		clearPendingAttachment();
 		$('#messageInput').val('');
+		$('#messageInput')[0].style.height = 'auto';
+		$('#messageInput').focus();
 	}
-	function displayChatMessage(name, text, time, encrypted) {
+
+	function createAttachmentElement(file)
+	{
+		if (!file) {
+			return null;
+		}
+		if (isImageAttachment(file)) {
+			var inlineWrap = $('<div class="msgInlineAttachment" />');
+			var thumbBtn = $('<button type="button" class="msgAttachmentThumb" title="Open full size image" />');
+			var thumbImg = $('<img alt="" />');
+			thumbImg.attr("alt", sanitizeFileName(file.name));
+			thumbImg.attr("src", attachmentDataUrl(file));
+			thumbBtn.append(thumbImg);
+			thumbBtn.on('click', function() {
+				openImagePreview(file);
+			});
+			inlineWrap.append(thumbBtn);
+			inlineWrap.append($('<div class="msgAttachmentMeta" />').text(sanitizeFileName(file.name) + " • " + formatBytes(file.size)));
+
+			var inlineAction = $('<div class="msgAttachmentAction" />');
+			var viewLink = $('<a href="#" />').text("View full size");
+			viewLink.on('click', function(e) {
+				e.preventDefault();
+				openImagePreview(file);
+			});
+			inlineAction.append(viewLink).append(document.createTextNode(" • "));
+
+			var inlineDownload = $('<a href="#" />').text("Download");
+			inlineDownload.on('click', function(e) {
+				e.preventDefault();
+				try {
+					downloadAttachment(file);
+				} catch (err) {
+					console.log(err);
+					setCryptoStatusMessage("Failed to prepare attachment download.");
+				}
+			});
+			inlineAction.append(inlineDownload);
+			inlineWrap.append(inlineAction);
+			return inlineWrap;
+		}
+
+		var card = $('<div class="msgAttachment" />');
+		card.append($('<div class="msgAttachmentName" />').text(file.name));
+		card.append($('<div class="msgAttachmentMeta" />').text((file.type || "application/octet-stream") + " • " + formatBytes(file.size)));
+		var action = $('<div class="msgAttachmentAction" />');
+		var downloadLink = $('<a href="#" />').text("Download");
+		downloadLink.on('click', function(e) {
+			e.preventDefault();
+			try {
+				downloadAttachment(file);
+			} catch (err) {
+				console.log(err);
+				setCryptoStatusMessage("Failed to prepare attachment download.");
+			}
+		});
+		action.append(downloadLink);
+		card.append(action);
+		return card;
+	}
+
+	function displayChatMessage(name, text, time, encrypted, attachment) {
 		var localTimeString = new Date(Date.parse(time)||time).toLocaleString("lt");
 		var altClass="";
 		var sameNickClass = "new";
@@ -630,16 +1393,29 @@
 			altClass = "alternate";
 		if (lastName == name)
 			sameNickClass = "same";
+
+		var messagesEl = $('#messages')[0];
+		var isNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+
 		text = formatText(text);
-		var body  = $("<div class='msgBody col-md-11' />").html(text).append($('<p class="time" />').text(localTimeString));
-		var textDiv= $('<div class="msg row '+altClass+' '+sameNickClass+' '+encryptedClass+'" />').html(body);
-		textDiv = textDiv.prepend($('<div class="nickname col-md-1" />').text(name));
-		
+		var body  = $("<div class='msgBody' />").html(text);
+		if (attachment) {
+			var attachmentEl = createAttachmentElement(attachment);
+			if (attachmentEl) {
+				body.append(attachmentEl);
+			}
+		}
+		body.append($('<p class="time" />').text(localTimeString));
+		var textDiv= $('<div class="msg '+altClass+' '+sameNickClass+' '+encryptedClass+'" />').html(body);
+		textDiv = textDiv.prepend($('<div class="nickname" />').text(name));
+
 		body[0].querySelectorAll('pre code').forEach((block) => {
 			hljs.highlightBlock(block);
 		});
 		textDiv.appendTo($('#messages'));
-		$('#messages')[0].scrollTop = $('#messages')[0].scrollHeight;
+		if (isNearBottom) {
+			messagesEl.scrollTop = messagesEl.scrollHeight;
+		}
 	}
 
 	function formatText(txt)
@@ -678,7 +1454,7 @@
 			.replace(/"/g, "&quot;")
 			.replace(/'/g, "&#39;");
 	}
-	
+
 	function notify(name, txt) {
 		if (name == $('#nameInput').val())
 			return;
@@ -694,7 +1470,7 @@
 			});
 		}
 	}
-	  
+
 	/******** UNREAD MESSAGE NOTIFICATION *********/
 	function setupVisibilityProps(){
 		if (typeof document.hidden !== "undefined") {
@@ -735,5 +1511,5 @@
 	}
     </script>
 
-<div id="secureIcon" style="display:none;"><img src="data:image/gif;base64,R0lGODlhIAAgAOZ/ANDt//+/ALKEMLiKM+X1/6anqOC9atXv/3WVvJVlPbLL483s/5lxUMfIx//EEpdoMN/z///GGoxbMfLy8oyXqur3/4Wjxu74/5q52eLWzMKniMKMG//MNNnw/7m3tf/ABMSVM8KXQ/e+Ga3J45eXl//UVJirx//IJqZzJfL6/7ORZsCql+z4///efdLIvrqhi//BCKmDY//CDP/cc7ucfUlnlf/AAv/aavT7///XYP/nov/RSI2szsKfYqyKZcKQKeDDgqnH46OBYrjN49mfEPe5BJaqx9GZE7uGH+i6Q7KAIpCtznd/jef2/+j2/+L0/+Hz/9zy/9vx/8GsmOjg2G15jdHBsvDq5djLv7qbcPDfuPj4+MKgasy+saS71erv8qx8LsmSFrOQYK+OcrSnmf/fgP/zz3yCjNm4c+CmDdTU1JFgL//KLJeEe8vU2MKdXK+afJ9vLoKGjKuMX//ghbqQRKfH48mtl9Le5aN6V7aXfff18v/HIPf8///OPf///yH5BAEAAH8ALAAAAAAgACAAAAf/gH+Cg3tYU1NWV4OLjI2Ney9ZQC05SSAqGY6ajVRCWjqUOxwnIkpje5ube0JmoDmiJxEOMkp5qZovn5Qhaz4gIjIwH3FtJsbHx0bKFhQNf3tZriEJmVQDwh9ECRN9ODgpKRfiFRVOTV5Mf1iTr3Eagy8fHwEBElje4OIX5OYEQ+lTQnF4cAfePHoopnwLN65cEwL+AL4a9SOGIGv0EC5JseRCxyUVljRZQuDJvz9WkoyStUEMjR9FMgZYs/FjSCcklzyBcvIKiFizsMkMkEbCR48hRxJYAgWCgnR/fIgIKm9oABQMxLHg97BkU6dQrwwIVnXoEQkuLmx1CHEnBAhR/54OsjKgrMyzNpfgXPpkCYQlUaTIHURFzJGY9IigSNBlCQuQInNC8btESofBi6gwEIBkgwQ9X5Dqzdn3b5QlHTqMgMpIww4Z9aao5dr2a+DUB1Y70lACtoQVa/t5fXu7w4HcrBfxhr1mBbnISyf/lYJ6yXHdjV7kcHA1RjnSlE93sG4dQJDkg6bc4I4ihjnJlKmPP7AEgHn0gqbMcGCjfVe3cFlm3HH23efIFGVEYIMSMdRGnIDHLWHBhBggIIcjWBigoBISkAHHHA0AVh19B1hg3wJ21ECCIxkYwMcHIWxnAxFGyUceACYusAACZ6jBogEnfFDHDREgsYYQI95ogXGOCFThgSYZoBHkBjNEgMIaeOBGoH1LNllAKm+w8cEGLUTgmQduHHdAgQtYwEMVBWyRSg8cwLABHS8WIQEDE7oZRBAY1OCknKlwUWcYPYCBAgp7FuBoARQwwQQJztzyhwp+wEBjJpZ2StcGa9DQaSOBAAA7" width="32" height="32" title="This chat is using encryption"></div>	
+<div id="secureIcon" style="display:none;">&#x1F512;</div>
 </body></html>
