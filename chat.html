@@ -5,7 +5,6 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<script src="https://cdn.firebase.com/js/client/2.2.1/firebase.js" integrity="sha384-zAlH3FrzsxdG1VfzWcyO9+PqCx5mQkLQPjgtp7jukmrbywGDj5nCivAb4j9ddOFu" crossorigin="anonymous"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.js" integrity="sha256-DrT5NfxfbHvMHux31Lkhxg42LY6of8TaYyK50jnxRnM=" crossorigin="anonymous"></script>
-    	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js" integrity="sha256-6rXZCnFzbyZ685/fMsqoxxZz/QZwMnmwHg+SsNe+C/w=" crossorigin="anonymous"></script>		  
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous" />
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha256-8uHMIn1ru0GS5KO+zf7Zccf8Uw12IA5DrdEcmMuWLFM=" crossorigin="anonymous" />
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
@@ -109,11 +108,17 @@
 			#inputs textarea { min-width: 10em; width: 100%; height:82px; }
 			#messages .alternate .msgBody { background: #121212; }
 			#options span { color:gray;}
+			#cryptoStatus {
+				display: none;
+				color: #f0b35a;
+				margin-bottom: 0.4em;
+				font-size: 0.8em;
+			}
 			#optionsToggle {right: 15px; position:fixed; color:white; cursor: pointer;}
 			#send { font-size:10px;margin:0; border:0; line-height:12px; }
 			hr { margin: 3px; }
 		</style>
-		<title>Chat</title></head>
+		<title>Chat</title>
 	</head>
   <body>
     <div class="container-fluid">	
@@ -127,6 +132,8 @@
 		<button id="persistPass" title="Persist encryption key to survive refresh">#</button>
 		<input type="checkbox" id="enableEncryption"> <label> Enable encryption </label>
 		<input type="checkbox" id="enableNotifications"> <label> Enable notifications </label>
+		</span>
+		<div id="cryptoStatus"></div>
 	</div>
 	<div id = "msgInput">
 		<div id="optionsToggle" title="Toggle options">🔨</div>
@@ -141,132 +148,470 @@
 	/* ---------------------- CONFIGURATION ------------------------*/
 	var databaseUrl = 'https://antano-chatas.firebaseio.com/';
 	var messagesLimit = 147; //how many messages to show
-	var pbkdf2Iterrations = 447; //password stretching strength. Bigger number puts more load on client;	
 	var notificationsEnabled = true; //enables or disables desktop notifications globally
-	var passwordSalt = 'ba1cba00555d77ab'; //change this to something random
+	var encVersion = 1;
+	var encAlgorithm = 'AES-256-GCM';
+	var encKdf = 'PBKDF2-SHA-256';
+	var pbkdf2Iterations = 310000;
+	var maxAcceptedPbkdf2Iterations = 400000; // reject attacker-supplied high iteration counts from remote payloads
+	var persistTransformSalt = 'firebasechat-passphrase-persist-v1';
+	var persistTransformIterations = 120000;
+	var encSaltLengthBytes = 16;
+	var encIvLengthBytes = 12;
 
 	/* ------------------ END OF CONFIGURATION ---------------------*/
 	
-	
 	var fb = new Firebase(databaseUrl);
-	fbQuery = fb.endAt().limitToLast(messagesLimit);
+	var fbQuery = fb.endAt().limitToLast(messagesLimit);
 	var lastName = "";
-	var notifyEnabled = false;		
-	passwordSalt = CryptoJS.enc.Hex.parse(passwordSalt);
-	var iv = CryptoJS.enc.Hex.parse('ca123400777d00cd'); //IV should be random for each message, but it is currently not implemented
-	var password;	
+	var notifyEnabled = false;
+	var password;
+	var passwordFallback;
 	var encrypt = false;
+	var supportsModernCrypto = !!(window.crypto && window.crypto.subtle && window.TextEncoder && window.TextDecoder);
+	var decryptFailureCount = 0;
+	var cryptoStatusMessage = "";
+	var messageRenderQueue = Promise.resolve();
+	var attachGeneration = 0;
 
 	/******** UNREAD MESSAGE NOTIFICATION *********/
 	var unreadMsgCount = 0;
-	var hidden, visibilityChange; 
-	var title = "Chat";  
+	var hidden, visibilityChange;
+	var title = "Chat";
+	var notificationWarmupExpiresAt = 0;
 	document.title = title;
 	/**********************************************/
 
 	$(function(){
-	
 		$("#enableEncryption").prop('checked', false);
+		$('#persistPass').attr('title', 'Persist derived unlock secret (not raw passphrase)');
 		$('#nameInput').val(localStorage.getItem("nickname"));
-		notifyEnabled = JSON.parse(localStorage.getItem("enableNotifications"));
+		var storedNotify = localStorage.getItem("enableNotifications");
+		if (storedNotify === null) {
+			notifyEnabled = notificationsEnabled;
+		} else {
+			notifyEnabled = storedNotify === "true";
+		}
 		$('#enableNotifications').prop('checked', notifyEnabled);
-	
+
 		fbAttach();
 		/******** UNREAD MESSAGE NOTIFICATION *********/
 		setupVisibilityProps();
 		/**********************************************/
-		if (window.location.hash)
+		if (hasPersistedSplitSecret())
 		{
 			$("#enableEncryption").prop('checked', true);
 			enableEncryption();
 		}
 	});
-	$('#enableNotifications').change(function(){localStorage.setItem("enableNotifications", $(this).prop('checked'));});
+	$('#enableNotifications').change(function(){
+		notifyEnabled = $(this).prop('checked');
+		localStorage.setItem("enableNotifications", notifyEnabled);
+	});
 	$('#nameInput').change(function(){localStorage.setItem("nickname", $(this).val());});
-	$('#passwordInput').change(function(){$("#enableEncryption").prop('checked', false);});
+	$('#passwordInput').change(function(){
+		$("#enableEncryption").prop('checked', false);
+		encrypt = false;
+		password = undefined;
+		passwordFallback = undefined;
+		$("#secureIcon").hide(1000);
+	});
 	$('#send').click(function(){send();});
 	$('#persistPass').click(function(){
-	  		window.location.hash = password.substring(password.length/2);
-			localStorage.setItem("p", password.substring(0,password.length/2))
-	})
+		persistDerivedSecret();
+	});
 	$("#optionsToggle").click(function() {
-	  $("#options").toggle( "fast" );
+		$("#options").toggle("fast");
 	});
 	$("#enableEncryption").change(function() {
-			if(this.checked) {
-				enableEncryption();
-			} else
-			{
-				encrypt = false;
-				$("#secureIcon").hide(1000);
-			}
+		if(this.checked) {
+			enableEncryption();
+		} else
+		{
+			encrypt = false;
+			password = undefined;
+			passwordFallback = undefined;
+			$("#secureIcon").hide(1000);
+		}
 	});
 
 	$('#messageInput').keydown(function (e) {
-	if (e.keyCode == 13 && e.ctrlKey) {			
-			//return true;
+		if (e.keyCode == 13 && e.ctrlKey) {
 			$('#messageInput').val($('#messageInput').val() + "\n");
-	}});
+		}
+	});
 	$('#messageInput').keypress(function (e) {
-	if (e.keyCode == 13 && !e.ctrlKey) {
+		if (e.keyCode == 13 && !e.ctrlKey) {
 			send();
 			return false;
-	}});
-	function enableEncryption()
+		}
+	});
+
+	function renderCryptoStatus()
 	{
-				userpass = $('#passwordInput').val();
-				locpass = localStorage.getItem("p");
-				if (window.location.hash && locpass && !userpass)
-				{
-					password = locpass + window.location.hash.substring(1);
-				}
-				else
-				{
-					password = CryptoJS.PBKDF2(userpass, passwordSalt, { keySize: 256/32, iterations: 447 }).toString();
-				}
-				$("#secureIcon").show(2200);
-				fb.off();
-				$('#messages').html('');				
-				encrypt = true;
-				fbAttach();
+		var msg = cryptoStatusMessage;
+		if (!msg && decryptFailureCount > 0) {
+			msg = decryptFailureCount + " encrypted message(s) could not be decrypted.";
+		}
+		if (msg) {
+			$("#cryptoStatus").text(msg).show();
+		} else {
+			$("#cryptoStatus").hide().text("");
+		}
 	}
+
+	function setCryptoStatusMessage(msg)
+	{
+		cryptoStatusMessage = msg || "";
+		renderCryptoStatus();
+	}
+
+	function incrementDecryptFailure()
+	{
+		decryptFailureCount += 1;
+		renderCryptoStatus();
+	}
+
+	function resetDecryptFailures()
+	{
+		decryptFailureCount = 0;
+		renderCryptoStatus();
+	}
+
+	function hasPersistedSplitSecret()
+	{
+		return !!(localStorage.getItem("p") && window.location.hash);
+	}
+
+	function resolvePersistedSecret()
+	{
+		var localHalf = localStorage.getItem("p");
+		var hashHalf = "";
+		if (window.location.hash) {
+			try {
+				hashHalf = decodeURIComponent(window.location.hash.substring(1));
+			} catch (err) {
+				hashHalf = "";
+			}
+		}
+		if (!localHalf || !hashHalf) {
+			return "";
+		}
+		return localHalf + hashHalf;
+	}
+
+	async function resolveActivePassword()
+	{
+		var userpass = $('#passwordInput').val();
+		if (userpass) {
+			return {
+				primary: await derivePersistedSecret(userpass),
+				fallback: userpass
+			};
+		}
+		var persistedSecret = resolvePersistedSecret();
+		if (persistedSecret) {
+			return {
+				primary: persistedSecret,
+				fallback: ""
+			};
+		}
+		return null;
+	}
+
+	async function enableEncryption()
+	{
+		if (!supportsModernCrypto) {
+			encrypt = false;
+			password = undefined;
+			passwordFallback = undefined;
+			$("#enableEncryption").prop('checked', false);
+			$("#secureIcon").hide(0);
+			setCryptoStatusMessage("Modern encryption is not supported in this browser.");
+			return;
+		}
+
+		try {
+			var resolvedPassword = await resolveActivePassword();
+			if (!resolvedPassword) {
+				encrypt = false;
+				password = undefined;
+				passwordFallback = undefined;
+				$("#enableEncryption").prop('checked', false);
+				$("#secureIcon").hide(0);
+				setCryptoStatusMessage("Enter an encryption password first.");
+				return;
+			}
+
+			password = resolvedPassword.primary;
+			passwordFallback = resolvedPassword.fallback || undefined;
+			setCryptoStatusMessage("");
+			resetDecryptFailures();
+			$("#secureIcon").show(2200);
+			fb.off();
+			$('#messages').html('');
+			encrypt = true;
+			fbAttach();
+		} catch (err) {
+			console.log(err);
+			encrypt = false;
+			password = undefined;
+			passwordFallback = undefined;
+			$("#enableEncryption").prop('checked', false);
+			$("#secureIcon").hide(0);
+			setCryptoStatusMessage("Failed to initialize encryption.");
+		}
+	}
+
+	function utf8ToBytes(txt)
+	{
+		return new TextEncoder().encode(txt);
+	}
+
+	function bytesToUtf8(bytes)
+	{
+		return new TextDecoder().decode(bytes);
+	}
+
+	function randomBytes(length)
+	{
+		var bytes = new Uint8Array(length);
+		window.crypto.getRandomValues(bytes);
+		return bytes;
+	}
+
+	function toBase64(bytes)
+	{
+		var binary = "";
+		var chunkSize = 0x8000;
+		for (var i = 0; i < bytes.length; i += chunkSize) {
+			var chunk = bytes.subarray(i, i + chunkSize);
+			binary += String.fromCharCode.apply(null, chunk);
+		}
+		return btoa(binary);
+	}
+
+	function fromBase64(base64)
+	{
+		var binary = atob(base64);
+		var bytes = new Uint8Array(binary.length);
+		for (var i = 0; i < binary.length; i++) {
+			bytes[i] = binary.charCodeAt(i);
+		}
+		return bytes;
+	}
+
+	async function deriveAesKey(passphrase, saltBytes, iterations)
+	{
+		var keyMaterial = await window.crypto.subtle.importKey(
+			'raw',
+			utf8ToBytes(passphrase),
+			'PBKDF2',
+			false,
+			['deriveKey']
+		);
+		return window.crypto.subtle.deriveKey(
+			{
+				name: 'PBKDF2',
+				salt: saltBytes,
+				iterations: iterations,
+				hash: 'SHA-256'
+			},
+			keyMaterial,
+			{
+				name: 'AES-GCM',
+				length: 256
+			},
+			false,
+			['encrypt', 'decrypt']
+		);
+	}
+
+	async function derivePersistedSecret(rawPassphrase)
+	{
+		var keyMaterial = await window.crypto.subtle.importKey(
+			'raw',
+			utf8ToBytes(rawPassphrase),
+			'PBKDF2',
+			false,
+			['deriveBits']
+		);
+		var secretBits = await window.crypto.subtle.deriveBits(
+			{
+				name: 'PBKDF2',
+				salt: utf8ToBytes(persistTransformSalt),
+				iterations: persistTransformIterations,
+				hash: 'SHA-256'
+			},
+			keyMaterial,
+			256
+		);
+		return toBase64(new Uint8Array(secretBits));
+	}
+
+	async function persistDerivedSecret()
+	{
+		if (!supportsModernCrypto) {
+			setCryptoStatusMessage("Modern encryption is not supported in this browser.");
+			return;
+		}
+		try {
+			var resolved = await resolveActivePassword();
+			if (!resolved || !resolved.primary) {
+				setCryptoStatusMessage("Enter an encryption password first.");
+				return;
+			}
+			password = resolved.primary;
+			passwordFallback = resolved.fallback || undefined;
+			var half = Math.floor(password.length / 2);
+			localStorage.setItem("p", password.substring(0, half));
+			window.location.hash = encodeURIComponent(password.substring(half));
+			setCryptoStatusMessage("Derived unlock secret persisted.");
+		} catch (err) {
+			console.log(err);
+			setCryptoStatusMessage("Failed to persist unlock secret.");
+		}
+	}
+
+	async function encryptTextV1(plainText, passphrase)
+	{
+		var salt = randomBytes(encSaltLengthBytes);
+		var iv = randomBytes(encIvLengthBytes);
+		var key = await deriveAesKey(passphrase, salt, pbkdf2Iterations);
+		var encryptedBuffer = await window.crypto.subtle.encrypt(
+			{ name: 'AES-GCM', iv: iv },
+			key,
+			utf8ToBytes(plainText)
+		);
+		return {
+			text: "This message is encrypted",
+			enc: {
+				v: encVersion,
+				alg: encAlgorithm,
+				kdf: encKdf,
+				iter: pbkdf2Iterations,
+				salt: toBase64(salt),
+				iv: toBase64(iv),
+				ct: toBase64(new Uint8Array(encryptedBuffer))
+			}
+		};
+	}
+
+	async function decryptTextV1(encObj, passphrase)
+	{
+		if (!encObj || encObj.v !== encVersion || encObj.alg !== encAlgorithm || encObj.kdf !== encKdf) {
+			throw new Error("Unsupported encryption payload");
+		}
+		var iterations = Number(encObj.iter);
+		if (!isFinite(iterations) || iterations <= 0 || iterations !== Math.floor(iterations) || iterations > maxAcceptedPbkdf2Iterations) {
+			throw new Error("Invalid KDF iteration count");
+		}
+		var salt = fromBase64(encObj.salt);
+		var iv = fromBase64(encObj.iv);
+		var ciphertext = fromBase64(encObj.ct);
+		var key = await deriveAesKey(passphrase, salt, iterations);
+		var decryptedBuffer = await window.crypto.subtle.decrypt(
+			{ name: 'AES-GCM', iv: iv },
+			key,
+			ciphertext
+		);
+		return bytesToUtf8(new Uint8Array(decryptedBuffer));
+	}
+
+	async function processIncomingMessage(snapshot)
+	{
+		var message = snapshot.val();
+		if (!message) {
+			return;
+		}
+
+		var isEncrypted = false;
+		if (message.enc) {
+			isEncrypted = true;
+			if (!password) {
+				message.text = "Encrypted message. Enable encryption to decrypt.";
+			} else {
+				var decryptionCandidates = [password];
+				if (passwordFallback && passwordFallback !== password) {
+					decryptionCandidates.push(passwordFallback);
+				}
+				try {
+					var decryptedText;
+					var lastError;
+					for (var i = 0; i < decryptionCandidates.length; i++) {
+						try {
+							decryptedText = await decryptTextV1(message.enc, decryptionCandidates[i]);
+							break;
+						} catch (candidateErr) {
+							lastError = candidateErr;
+						}
+					}
+					if (decryptedText === undefined) {
+						throw lastError || new Error("Decryption failed");
+					}
+					message.text = decryptedText;
+				} catch (err) {
+					console.log(err);
+					message.text = "Decryption failed (wrong password or corrupted data)";
+					incrementDecryptFailure();
+				}
+			}
+		} else if (message.ct) {
+			isEncrypted = true;
+			message.text = "Legacy encrypted message format is no longer supported.";
+		}
+
+		displayChatMessage(message.name, message.text, message._at, isEncrypted);
+		/******** UNREAD MESSAGE NOTIFICATION *********/
+		notifyAboutUnread(snapshot);
+		/**********************************************/
+		if (notifyEnabled && Date.now() >= notificationWarmupExpiresAt) {
+			notify(message.name, message.text);
+		}
+		lastName = message.name;
+	}
+
 	function fbAttach()
 	{
-		notifyEnabled = false;
-		setTimeout(function(){notifyEnabled=true;},17000);
+		attachGeneration += 1;
+		var currentGeneration = attachGeneration;
+		messageRenderQueue = Promise.resolve();
+		notificationWarmupExpiresAt = Date.now() + 17000;
 		fbQuery.on('child_added', function (snapshot) {
-			var message = snapshot.val();
-			if (message.ct) //encrypted
-			{
-				try {				
-					msgIV = CryptoJS.enc.Hex.parse(message.iv || 'ca123400777d00cd');
-					var decrypted = CryptoJS.AES.decrypt(message.ct, CryptoJS.enc.Hex.parse(password),{ iv:msgIV }); 
-					message.text = decrypted.toString(CryptoJS.enc.Utf8);
-				} catch (err) {console.log(err);}
-				if (!message.text)
-					message.text = "Decryption failed";
+			if (currentGeneration !== attachGeneration) {
+				return;
 			}
-			displayChatMessage(message.name, message.text, message._at, message.ct);
-			/******** UNREAD MESSAGE NOTIFICATION *********/		
-			notifyAboutUnread(snapshot);
-			/**********************************************/		
-			if (notifyEnabled)
-				notify(message.name, message.text);
-			lastName = message.name;
+			messageRenderQueue = messageRenderQueue
+				.then(function () {
+					if (currentGeneration !== attachGeneration) {
+						return;
+					}
+					return processIncomingMessage(snapshot);
+				})
+				.catch(function (err) { console.log(err); });
 		});
 	}
 
-
-	function send()
+	async function send()
 	{
-		var name = $('#nameInput').val();			
-		var text = $('#messageInput').val();	
+		var name = $('#nameInput').val();
+		var text = $('#messageInput').val();
 		if (!text)
 			return;
 		if (encrypt)
 		{
-			var encrypted = CryptoJS.AES.encrypt(text, CryptoJS.enc.Hex.parse(password),{ iv: CryptoJS.lib.WordArray.random(32)});				
-			fb.push({name: name, text: "This message is encrypted", ct: encrypted.toString(), _at: new Date().toISOString(), iv: encrypted.iv.toString() });
+			if (!supportsModernCrypto || !password) {
+				setCryptoStatusMessage("Encryption is enabled but an active password is missing.");
+				return;
+			}
+			try {
+				var encryptedPayload = await encryptTextV1(text, password);
+				fb.push({name: name, text: encryptedPayload.text, enc: encryptedPayload.enc, _at: new Date().toISOString()});
+			} catch (err) {
+				console.log(err);
+				setCryptoStatusMessage("Failed to encrypt message.");
+				return;
+			}
 		}
 		else
 		{
@@ -277,7 +622,7 @@
 	function displayChatMessage(name, text, time, encrypted) {
 		var localTimeString = new Date(Date.parse(time)||time).toLocaleString("lt");
 		var altClass="";
-		var sameNickClass = "new"
+		var sameNickClass = "new";
 		var encryptedClass = "enc";
 		if (!encrypted)
 			encryptedClass = "";
@@ -292,35 +637,46 @@
 		
 		body[0].querySelectorAll('pre code').forEach((block) => {
 			hljs.highlightBlock(block);
-		});			
+		});
 		textDiv.appendTo($('#messages'));
 		$('#messages')[0].scrollTop = $('#messages')[0].scrollHeight;
-	};
+	}
 
 	function formatText(txt)
 	{
-	    //console.log(txt);
-		if (txt.startsWith("`")) { //pre
-			txt = txt.replace("`","");
-			txt = txt.replace(/^\s+|\s+$/g, ''); //trim start
-			return "<pre><code>"+txt+"</code></pre>";
+		if (txt === null || txt === undefined) {
+			return "";
 		}
-		var codeExp = /`(.+?)`/i;
+		txt = String(txt);
+		if (txt.startsWith("`")) { //pre
+			txt = txt.replace(/^`|`$/g, "");
+			txt = txt.replace(/^\s+|\s+$/g, ''); //trim start
+			return "<pre><code>"+escapeHtml(txt)+"</code></pre>";
+		}
+		txt = escapeHtml(txt);
+		var codeExp = /`(.+?)`/gi;
 		if (txt.search(codeExp) >= 0)
 		{
-			console.log(txt);
-			return txt.replace(codeExp, '<code class="snip">$1</code>'); 
+			return txt.replace(codeExp, '<code class="snip">$1</code>');
 		}
-		var imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/i;
-		var linkExp = /(\b(https?):[^ ]+)/i;
+		var imgExp = /(\b(https?):.+?\.(jpg|gif|png|svg|jpeg))/gi;
+		var linkExp = /(\b(https?):[^ ]+)/gi;
 		txt = txt.split("\n").join("<br />");
 		if (txt.search(imgExp) >= 0)
 		{
-			return txt.replace(imgExp, '<a href="$1" target="_blank"><img src="$1" /></a>'); 
+			return txt.replace(imgExp, '<a href="$1" target="_blank"><img src="$1" /></a>');
 		}
-		txt = txt.replace(linkExp, '<a href="$1" target="_blank">$1</a>'); 
+		txt = txt.replace(linkExp, '<a href="$1" target="_blank">$1</a>');
 		return txt;
+	}
 
+	function escapeHtml(txt) {
+		return txt
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+			.replace(/"/g, "&quot;")
+			.replace(/'/g, "&#39;");
 	}
 	
 	function notify(name, txt) {
@@ -329,11 +685,11 @@
 		if (!("Notification" in window)) {
 			alert("This browser does not support desktop notification");
 		} else if (Notification.permission === "granted") {
-			var notification = new Notification(txt);
+			new Notification(txt);
 		} else if (Notification.permission !== 'denied') {
 			Notification.requestPermission(function (permission) {
 				if (permission === "granted") {
-					var notification = new Notification(txt);
+					new Notification(txt);
 				}
 			});
 		}
@@ -341,7 +697,7 @@
 	  
 	/******** UNREAD MESSAGE NOTIFICATION *********/
 	function setupVisibilityProps(){
-		if (typeof document.hidden !== "undefined") { 
+		if (typeof document.hidden !== "undefined") {
 		  hidden = "hidden";
 		  visibilityChange = "visibilitychange";
 		} else if (typeof document.mozHidden !== "undefined") {
